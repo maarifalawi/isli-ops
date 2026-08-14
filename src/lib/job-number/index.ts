@@ -147,3 +147,8 @@ export function computeDueDate(issueDate: Date, scope: SeqScope): Date {
   due.setDate(due.getDate() + paymentTermDays(scope));
   return due;
 }
+
+// Alokator nomor urut berbasis DB (UPSERT counter di dalam transaksi).
+// Lihat allocator.ts — hanya boleh dipanggil di dalam db.transaction
+// yang juga INSERT job/invoice.
+export { allocateInvoiceNumber, allocateJobNumber, type Tx } from "./allocator";

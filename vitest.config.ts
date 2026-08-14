@@ -1,5 +1,36 @@
+import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vitest/config";
+
+/**
+ * Vitest tidak otomatis memuat .env.local ke process.env. Test integrasi
+ * (alokasi nomor urut) butuh DATABASE_URL, jadi dimuat manual di sini —
+ * nilai yang sudah ada di environment TIDAK ditimpa.
+ */
+function loadDotEnvFile(file: string): void {
+  const filePath = path.resolve(__dirname, file);
+  if (!fs.existsSync(filePath)) return;
+  const text = fs.readFileSync(filePath, "utf8");
+  for (const line of text.split(/\r?\n/)) {
+    if (!line || line.trimStart().startsWith("#")) continue;
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(line);
+    if (!m) continue;
+    const key = m[1];
+    let value = m[2] ?? "";
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    if (key !== undefined && process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+
+loadDotEnvFile(".env.local");
+loadDotEnvFile(".env");
 
 export default defineConfig({
   test: {

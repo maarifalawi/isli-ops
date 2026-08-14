@@ -8,6 +8,13 @@
       "when": 1786666288685,
       "tag": "0000_unusual_rockslide",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786719774840,
+      "tag": "0001_dapper_gargoyle",
+      "breakpoints": true
     }
   ]
 }

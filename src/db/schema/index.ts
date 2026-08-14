@@ -19,6 +19,8 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
+  smallint,
   text,
   timestamp,
   uniqueIndex,
@@ -283,6 +285,69 @@ export const jobs = pgTable(
   }),
 );
 
+// ---------------------------------------------------------------------------
+// Counter penomoran (irisan 2 — Penomoran Job & Invoice)
+// ---------------------------------------------------------------------------
+
+/**
+ * Counter nomor urut job per (scope, tahun, bulan) — sesuai ERD.md.
+ *
+ * Alokasi HANYA terjadi lewat UPSERT di dalam transaksi yang SAMA dengan
+ * INSERT job-nya:
+ *
+ *   INSERT ... ON CONFLICT DO UPDATE
+ *     SET last_running = job_sequence.last_running + 1
+ *   RETURNING last_running
+ *
+ * Row-level lock pada baris counter menyerialkan penuh semua transaksi yang
+ * berebut nomor di periode yang sama: tidak butuh advisory lock, dan tidak
+ * ada jalur `MAX(running)+1` tanpa lock. Nomor tidak pernah disimpan atau
+ * dihitung di memori aplikasi.
+ */
+export const jobSequence = pgTable(
+  "job_sequence",
+  {
+    seqScope: text("seq_scope").notNull(),
+    tahun: smallint("tahun").notNull(),
+    bulan: smallint("bulan").notNull(),
+    lastRunning: integer("last_running").notNull().default(0),
+  },
+  (table) => ({
+    pkJobSequence: primaryKey({
+      columns: [table.seqScope, table.tahun, table.bulan],
+    }),
+    ckJobSeqScope: check("ck_job_seq_scope", sql`seq_scope IN ('DOM', 'EXP', 'IMP')`),
+    ckJobSeqBulan: check("ck_job_seq_bulan", sql`bulan BETWEEN 1 AND 12`),
+  }),
+);
+
+/**
+ * Counter nomor urut invoice per (jenis, tahun terbit, bulan terbit).
+ *
+ * R2.2 — angka romawi di nomor invoice adalah BULAN TERBIT invoice, bukan
+ * bulan job-nya. R2.4 — counter reset setiap bulan, jadi kunci unik dan
+ * counter wajib memuat bulan terbit.
+ */
+export const invoiceSequence = pgTable(
+  "invoice_sequence",
+  {
+    invType: text("inv_type").notNull(),
+    issueYear: smallint("issue_year").notNull(),
+    issueMonth: smallint("issue_month").notNull(),
+    lastRunning: integer("last_running").notNull().default(0),
+  },
+  (table) => ({
+    pkInvoiceSequence: primaryKey({
+      columns: [table.invType, table.issueYear, table.issueMonth],
+    }),
+    ckInvSeqType: check(
+      "ck_inv_seq_type",
+      sql`inv_type IN ('INVDOM', 'INVEXP', 'INVIMP')`,
+    ),
+    ckInvSeqMonth: check("ck_inv_seq_month", sql`issue_month BETWEEN 1 AND 12`),
+  }),
+);
+
 /**
  * Realokasi biaya antar job ("dipecah") — ADR-0006 Opsi B, diterima 13 Agu 2026.
  *
@@ -471,6 +536,13 @@ export const customerInvoices = pgTable(
 
     invType: text("inv_type").notNull(), // INVDOM | INVEXP | INVIMP
     issueYear: integer("issue_year").notNull(),
+    /*
+     * R2.2 — romawi di nomor invoice = bulan TERBIT invoice (bukan bulan
+     * job). Job Juli yang diinvoice Agustus memakai romawi VIII. Tanpa kolom
+     * ini aturan itu tidak bisa dipaksakan, dan counter R2.4 tidak tahu harus
+     * reset di bulan apa.
+     */
+    issueMonth: smallint("issue_month").notNull(),
     running: integer("running").notNull(),
     invoiceNo: text("invoice_no").notNull(),
 
@@ -508,7 +580,16 @@ export const customerInvoices = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    uqInv: uniqueIndex("uq_inv").on(table.invType, table.issueYear, table.running),
+    /*
+     * R2.4 — counter invoice reset tiap bulan. Kunci unik WAJIB memuat bulan
+     * terbit; tanpa itu 001-INVDOM Januari dan 001-INVDOM Februari tabrakan.
+     */
+    uqInv: uniqueIndex("uq_inv").on(
+      table.invType,
+      table.issueYear,
+      table.issueMonth,
+      table.running,
+    ),
     idxJob: index("idx_inv_job").on(table.jobId),
     /** R9.4b -- kalau terbit sebelum POD, approvalnya wajib ada. */
     ckEarlyIssue: check(
