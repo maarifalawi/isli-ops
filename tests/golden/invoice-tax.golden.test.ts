@@ -66,8 +66,13 @@ describe("INVOICE DIAMETRAL 07-003 (EXIM, dengan PPh 23 2%)", () => {
     expect(hasil.dpp).toBe(132_623_041n);
   });
 
-  it("PPN cocok dengan invoice cetak", () => {
-    expect(hasil.ppn).toBe(1_458_853n);
+  it("PPN 1,1% atas DPP, dibulatkan KE ATAS (Q05, 13 Agu 2026)", () => {
+    // 132.623.041 × 1,1% = 1.458.853,451 → ceiling = 1.458.854.
+    // Invoice cetak lama menulis 1.458.853 — itulah sumber selisih Rp 1 yang
+    // dulu dibiarkan merah. Q05 sudah dijawab: pembulatan KE ATAS. Nilai
+    // harapan ini satu-satunya yang dikoreksi dari angka cetak, dengan alasan
+    // tercatat di sini; grand total di bawah TIDAK berubah dan tetap cocok.
+    expect(hasil.ppn).toBe(1_458_854n);
   });
 
   it("PPh 23 cocok dengan invoice cetak", () => {
@@ -75,10 +80,10 @@ describe("INVOICE DIAMETRAL 07-003 (EXIM, dengan PPh 23 2%)", () => {
   });
 
   /*
-   * PPh 23, PPN, dan grand total masing-masing dibulatkan independen dari
-   * basis pajaknya sendiri sesuai pola invoicing nyata klien. Karena itu grand
-   * total cetak dapat berbeda Rp 1 dari rumus naif atas komponen yang sudah
-   * dibulatkan. Angka berikut berasal dari dokumen invoice asli.
+   * R3.3: grand total = sub_total + PPN − PPh 23, tiap komponen dibulatkan ke
+   * atas sendiri-sendiri (R3.6/Q05). Jumlah komponen ceiling:
+   *   132.623.041 + 1.458.854 − 2.652.461 = 131.429.434
+   * — persis grand total cetak. Selisih Rp 1 yang lama hilang tanpa toleransi.
    */
   it("grand total cocok dengan invoice cetak", () => {
     expect(hasil.grandTotal).toBe(131_429_434n);

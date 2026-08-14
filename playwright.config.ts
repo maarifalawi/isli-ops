@@ -11,7 +11,11 @@ for (const baris of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
   const nama = cocok[1] ?? "";
   let nilai = cocok[2] ?? "";
   // Nilai ber-kutip ("…" / '…') dilepas kutipnya, seperti perilaku dotenv.
-  if (nilai.length >= 2 && nilai[0] === nilai[nilai.length - 1] && (nilai[0] === '"' || nilai[0] === "'")) {
+  if (
+    nilai.length >= 2 &&
+    nilai[0] === nilai[nilai.length - 1] &&
+    (nilai[0] === '"' || nilai[0] === "'")
+  ) {
     nilai = nilai.slice(1, -1);
   }
   if (nama !== "" && process.env[nama] === undefined) {

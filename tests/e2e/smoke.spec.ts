@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { type Page, expect, test } from "@playwright/test";
 
 /*
  * Uji asap kerangka berjalan.
@@ -15,8 +15,8 @@ import { expect, test, type Page } from "@playwright/test";
  * bukan digagalkan.
  */
 
-const email = process.env["E2E_TEST_EMAIL"] ?? "";
-const kataSandi = process.env["E2E_TEST_PASSWORD"] ?? "";
+const email = process.env.E2E_TEST_EMAIL ?? "";
+const kataSandi = process.env.E2E_TEST_PASSWORD ?? "";
 
 const uji = email !== "" && kataSandi !== "" ? test : test.skip;
 

@@ -73,6 +73,41 @@ export function computeJobCosting(input: JobCostingInput): JobCostingResult {
   };
 }
 
+/*
+ * Validasi at-cost (R4.3): baris reimburse WAJIB dijual sama persis dengan
+ * harga beli — tanpa margin, tanpa selisih Rp 1. Kalau ada selisih, itu bukan
+ * reimburse melainkan penjualan biasa, dan menandakannya sebagai reimburse
+ * akan salah mengkecualikannya dari DPP (R3.2).
+ */
+export type AtCostLine = {
+  readonly chargeCode: string;
+  readonly isReimburse: boolean;
+  /** Nilai yang ditagih ke customer. */
+  readonly selling: Rupiah;
+  /** Nilai yang dibayar ke vendor. */
+  readonly buying: Rupiah;
+};
+
+/**
+ * Melempar RangeError kalau ada baris reimburse dengan selling ≠ buying.
+ * Error menyebut kode charge supaya langsung ketahuan di layar.
+ */
+export function validateAtCostLines(lines: readonly AtCostLine[]): void {
+  for (const line of lines) {
+    if (!line.isReimburse) continue;
+    if (line.selling !== line.buying) {
+      throw new RangeError(
+        `Baris reimburse ${line.chargeCode} melanggar aturan at-cost (R4.3): selling (${line.selling}) wajib sama persis dengan buying (${line.buying}). Kalau memang ada margin, jangan tandai sebagai reimburse.`,
+      );
+    }
+  }
+}
+
+/** Total selling baris reimburse — inilah angka yang dikeluarkan dari DPP (R3.2). */
+export function reimburseSellingTotal(lines: readonly AtCostLine[]): Rupiah {
+  return sum(lines.filter((line) => line.isReimburse).map((line) => line.selling));
+}
+
 /**
  * Selisih pencadangan terhadap realisasi, per baris biaya.
  *

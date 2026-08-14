@@ -65,26 +65,31 @@ export function isNegative(value: Rupiah): boolean {
 }
 
 /**
- * Menerapkan tarif basis poin, dibulatkan ke rupiah terdekat.
+ * Menerapkan tarif basis poin, dibulatkan KE ATAS (ceiling) sesuai DOMAIN-RULES
+ * R3.6 — keputusan Q05 dijawab 13 Agu 2026 (docs/JAWABAN-KLIEN.md).
  *
- * Pembulatan: half away from zero (0,5 dibulatkan menjauhi nol).
- * Ini menyamai perilaku Excel `ROUND()`, yang dipakai Bu Niken di berkas
- * sumber — jadi angka sistem cocok dengan angka yang selama ini beliau hitung.
+ * Semua pajak (PPN, PPh 23, withhold) WAJIB lewat fungsi ini. Jangan pernah
+ * menulis `base * 0.011` — itu float dan dilarang (ADR-0002).
  *
- * CATATAN: JANGAN diganti ke banker's rounding tanpa ADR. Selisih Rp 1 pada
- * invoice Diametral sedang diselidiki (pertanyaan A2 ke Bu Niken) dan mengubah
- * mode pembulatan akan menyamarkan penyebabnya.
+ * Ceiling matematis: ke arah +tak hingga. Untuk basis positif (satu-satunya
+ * kasus pajak nyata) ini berarti naik ke rupiah berikutnya kalau ada pecahan.
+ * Basis negatif tidak mungkin muncul di pajak customer (divalidasi di hulu),
+ * tapi tetap ditangani konsisten di sini.
+ *
+ * Kasus Diametral 07-003 membuktikan aturan ini:
+ *   PPN  = ceil(132.623.041 × 1,1%) = ceil(1.458.853,451) = 1.458.854
+ *   PPh  = ceil(132.623.041 × 2%)   = ceil(2.652.460,82)  = 2.652.461
  *
  * @example applyRateBp(rupiah(22_600_000n), PPN_RATE_BP) // => 248_600n
  */
 export function applyRateBp(base: Rupiah, bp: BasisPoints | number): Rupiah {
   const numerator = base * BigInt(bp);
   const denominator = 10_000n;
-  const negative = numerator < 0n;
-  const absolute = negative ? -numerator : numerator;
-  // Half away from zero, sama dengan Excel ROUND().
-  const rounded = (absolute + denominator / 2n) / denominator;
-  return (negative ? -rounded : rounded) as Rupiah;
+  if (numerator % denominator === 0n) return (numerator / denominator) as Rupiah;
+  // Pembagian bigint memotong ke arah nol; untuk hasil negatif itu sudah sama
+  // dengan ceiling matematis, untuk hasil positif perlu ditambah satu.
+  const truncated = numerator / denominator;
+  return (numerator < 0n ? truncated : truncated + 1n) as Rupiah;
 }
 
 /**
@@ -116,7 +121,8 @@ export function formatPercent(numerator: Rupiah, denominator: Rupiah): string {
   const negative = numerator < 0n;
   const absoluteNumerator = negative ? -numerator : numerator;
   const absoluteDenominator = denominator < 0n ? -denominator : denominator;
-  const tenths = (absoluteNumerator * 1_000n + absoluteDenominator / 2n) / absoluteDenominator;
+  const tenths =
+    (absoluteNumerator * 1_000n + absoluteDenominator / 2n) / absoluteDenominator;
   const asNumber = Number(negative ? -tenths : tenths) / 10;
   return `${asNumber.toLocaleString("id-ID", {
     minimumFractionDigits: 1,
