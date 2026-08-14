@@ -10,11 +10,14 @@
  *   DPP         = sub_total − reimburse
  *   PPN         = round(DPP × 1,1%)
  *   PPh 23      = round(DPP × 2%)  — hanya kalau berlaku
- *   Grand total = sub_total + PPN − PPh 23
+ *   Grand total = round(sub_total + DPP×1,1% − DPP×2%)
  *
  * Perhatikan: grand total memakai SUB TOTAL, bukan DPP. Biaya reimburse tetap
  * ditagih penuh ke customer — yang dikecualikan hanya dari dasar pengenaan
  * pajak. Ini sumber kekeliruan yang paling mudah terjadi.
+ *
+ * Dan grand total dibulatkan dari nilai EXACT, bukan dari jumlah komponen yang
+ * sudah dibulatkan — lihat komentar di computeInvoiceTax (kasus Diametral).
  */
 
 import {
@@ -80,7 +83,24 @@ export function computeInvoiceTax(input: InvoiceTaxInput): InvoiceTaxResult {
   const dpp = subtract(subTotal, reimburse);
   const ppn = applyRateBp(dpp, PPN_RATE_BP);
   const pph23 = pph23Applicable ? applyRateBp(dpp, PPH23_RATE_BP) : ZERO;
-  const grandTotal = rupiah(subTotal + ppn - pph23);
+
+  // Grand total dihitung dari pembilang EXACT lalu dibulatkan sekali di akhir
+  // (half away from zero, sama dengan applyRateBp), BUKAN dari jumlah komponen
+  // yang sudah dibulatkan. Kasus Diametral 07-003:
+  //   exact: 132.623.041 + 1.458.853,451 − 2.652.460,82 = 131.429.433,631
+  //     dibulatkan dari exact        -> 131.429.434  = invoice cetak
+  //     jumlah komponen terbulatkan  -> 131.429.433  = MELESET Rp 1
+  // Baris PPN dan PPh 23 di laporan cetak tetap menampilkan komponen yang
+  // dibulatkan sendiri-sendiri (1.458.853 dan 2.652.461); hanya grand total
+  // yang dibulatkan dari nilai exact. Materee 06-012 tidak terpengaruh
+  // (22.600.000 × 1,1% = 248.600 tepat).
+  const grandExactNumerator =
+    subTotal * 10_000n +
+    dpp * BigInt(PPN_RATE_BP) -
+    (pph23Applicable ? dpp * BigInt(PPH23_RATE_BP) : 0n);
+  const negative = grandExactNumerator < 0n;
+  const absolute = negative ? -grandExactNumerator : grandExactNumerator;
+  const grandTotal = ((negative ? -1n : 1n) * ((absolute + 5_000n) / 10_000n)) as Rupiah;
 
   return {
     subTotal,

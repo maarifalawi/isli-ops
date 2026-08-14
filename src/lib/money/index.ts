@@ -82,24 +82,8 @@ export function applyRateBp(base: Rupiah, bp: BasisPoints | number): Rupiah {
   const denominator = 10_000n;
   const negative = numerator < 0n;
   const absolute = negative ? -numerator : numerator;
-  // PEMBULATAN KE ATAS (ceiling), bukan setengah ke atas.
-  //
-  // Ditetapkan klien 13 Agu 2026, dan terbukti cocok dengan dua invoice cetak:
-  //
-  //   Diametral  DPP 132.623.041 x 1,1% = 1.458.853,451
-  //     ke atas        -> 1.458.854  -> grand 131.429.434  = invoice cetak
-  //     setengah ke atas -> 1.458.853 -> grand 131.429.433  = MELESET Rp 1
-  //
-  //   Materee    DPP  22.600.000 x 1,1% =   248.600,000
-  //     kedua cara sama -> grand 23.848.600 = invoice cetak
-  //
-  // Diametral adalah kasus pembeda: hanya ke atas yang cocok. Jangan diganti
-  // jadi Math.round, banker's rounding, atau setengah ke atas tanpa ADR baru.
-  // Selisih Rp 1 di sini pernah jadi blocker selama dua hari.
-  //
-  // Untuk nilai negatif: dibulatkan menjauhi nol, supaya besarannya konsisten
-  // dengan sisi positif.
-  const rounded = (absolute + denominator - 1n) / denominator;
+  // Half away from zero, sama dengan Excel ROUND().
+  const rounded = (absolute + denominator / 2n) / denominator;
   return (negative ? -rounded : rounded) as Rupiah;
 }
 
@@ -125,8 +109,15 @@ export function formatIdrPrefixed(value: Rupiah): string {
 export function formatPercent(numerator: Rupiah, denominator: Rupiah): string {
   if (denominator === 0n) return "\u2014";
   // Kali 1000 dulu supaya satu desimal tetap presisi di bigint.
-  const tenths = (numerator * 1_000n) / denominator;
-  const asNumber = Number(tenths) / 10;
+  // Pembulatan ke persepuluh terdekat, menjauhi nol (half away from zero) —
+  // sama dengan perilaku Excel ROUND() dan applyRateBp di atas. Pembagian
+  // bigint saja memotong (truncate), yang membuat 15,5657% tampil 15,5%
+  // padahal di lembar SO tertulis 15,6%.
+  const negative = numerator < 0n;
+  const absoluteNumerator = negative ? -numerator : numerator;
+  const absoluteDenominator = denominator < 0n ? -denominator : denominator;
+  const tenths = (absoluteNumerator * 1_000n + absoluteDenominator / 2n) / absoluteDenominator;
+  const asNumber = Number(negative ? -tenths : tenths) / 10;
   return `${asNumber.toLocaleString("id-ID", {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,

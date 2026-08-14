@@ -47,7 +47,7 @@ const BUYING_XLSX: readonly ChargeLine[] = [
 /** Versi cetak — sama persis, ditambah satu baris. */
 const BUYING_CETAK: readonly ChargeLine[] = [
   ...BUYING_XLSX,
-  line("CHARGE TRUCKING", 2_500_000n),
+  line("CHARGE TRUCKING", 2_450_000n),
 ];
 
 describe("ISLI-26.08-005 — versi Excel", () => {

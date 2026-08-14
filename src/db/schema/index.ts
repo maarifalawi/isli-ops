@@ -354,7 +354,9 @@ export const chargeLines = pgTable(
     keterangan: text("keterangan"),
 
     /** Perkiraan saat job dibuat. */
-    pencadanganIdr: bigint("pencadangan_idr", { mode: "bigint" }).notNull().default(sql`0`),
+    pencadanganIdr: bigint("pencadangan_idr", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
     /** Nilai sebenarnya setelah invoice vendor masuk. Null = belum ada. */
     actualIdr: bigint("actual_idr", { mode: "bigint" }),
 

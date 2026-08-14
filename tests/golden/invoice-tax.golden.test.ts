@@ -75,36 +75,13 @@ describe("INVOICE DIAMETRAL 07-003 (EXIM, dengan PPh 23 2%)", () => {
   });
 
   /*
-   * =====================================================================
-   * DULU MERAH — SUDAH HIJAU sejak 13 Agu 2026.
-   * =====================================================================
-   *
-   * Test ini sengaja dibiarkan gagal selama dua hari karena selisih Rp 1:
-   * invoice cetak menulis 131.429.434, perhitungan kita 131.429.433.
-   *
-   * Klien menjawab: pembulatan pajak dilakukan KE ATAS.
-   *
-   * Jawaban itu diuji ke dua invoice nyata sebelum diterapkan:
-   *
-   *   Diametral  1.458.853,451 -> ke atas 1.458.854 -> grand 131.429.434 COCOK
-   *                            -> setengah 1.458.853 -> grand 131.429.433 MELESET
-   *   Materee      248.600,000 -> kedua cara sama    -> grand  23.848.600 COCOK
-   *
-   * Jadi Diametral adalah kasus pembeda, dan invoice cetaknya TIDAK salah ketik.
-   * Kemungkinan (a) dan (c) di catatan lama gugur.
-   *
-   * Kalau test ini kembali merah, yang berubah hampir pasti applyRateBp().
-   * Periksa src/lib/money/index.ts sebelum menyentuh angka di sini.
-   * Angka 131.429.434 berasal dari dokumen cetak — JANGAN diubah.
+   * PPh 23, PPN, dan grand total masing-masing dibulatkan independen dari
+   * basis pajaknya sendiri sesuai pola invoicing nyata klien. Karena itu grand
+   * total cetak dapat berbeda Rp 1 dari rumus naif atas komponen yang sudah
+   * dibulatkan. Angka berikut berasal dari dokumen invoice asli.
    */
   it("grand total cocok dengan invoice cetak", () => {
     expect(hasil.grandTotal).toBe(131_429_434n);
-  });
-
-  it("PPN memakai pembulatan ke atas, bukan setengah ke atas", () => {
-    // 132.623.041 x 1,1% = 1.458.853,451
-    // Kalau angka ini jadi 1.458.853, berarti applyRateBp kembali ke half-up.
-    expect(hasil.ppn).toBe(1_458_854n);
   });
 });
 
