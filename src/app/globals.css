@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Token warna — sumber tunggal kebenaran.
+ *
+ * Diturunkan dari docs/DESIGN-SYSTEM.md, yang diturunkan dari apple-DESIGN.md.
+ * tailwind.config.ts merujuk variabel di sini, jadi mengubah satu nilai di
+ * berkas ini mengubah seluruh aplikasi.
+ *
+ * PERINGATAN: empat nilai semantik (--red, --orange, --green, --gray) berasal
+ * dari palet aksesibel Apple HIG hasil ingatan, BELUM diverifikasi terhadap
+ * sumber resmi. Kalau ketepatan warna jadi penting, cocokkan ulang.
+ */
+:root {
+  /* Permukaan */
+  --canvas: #ffffff;
+  --parchment: #f5f5f7;
+  --pearl: #fafafc;
+
+  /* Teks */
+  --ink: #1d1d1f;
+  --ink-80: #333333;
+  --ink-48: #7a7a7a;
+
+  /* Garis */
+  --hairline: #e0e0e0;
+  --divider: #f0f0f0;
+
+  /* Aksen — satu-satunya warna merek */
+  --accent: #0066cc;
+  --accent-focus: #0071e3;
+  --accent-dark: #2997ff;
+
+  /* Semantik — teks, angka, garis tepi, titik 6px. TIDAK PERNAH latar blok. */
+  --red: #d70015;
+  --orange: #c93400;
+  --green: #248a3d;
+  --gray: #6c6c70;
+}
+
+html,
+body {
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * Semua angka memakai tabular-nums.
+ *
+ * Tanpa ini, digit punya lebar berbeda dan kolom angka terlihat bergoyang —
+ * yang membuat mata sulit membandingkan dua baris. Pada sistem yang seluruh
+ * gunanya adalah membandingkan angka, ini bukan detail kosmetik.
+ */
+.num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Fokus terlihat jelas — syarat aksesibilitas, bukan pilihan. */
+:focus-visible {
+  outline: 2px solid var(--accent-focus);
+  outline-offset: 2px;
+}
+
+/* Hormati preferensi pengguna yang sensitif terhadap gerakan. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,164 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Batalkan run lama kalau ada push baru di branch yang sama.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20.11.0"
+  # Jangan pernah taruh rahasia di sini. Pakai GitHub Secrets.
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # ---------------------------------------------------------------
+  # Gerbang 1 — cepat. Gagal di sini, sisanya tidak usah jalan.
+  # ---------------------------------------------------------------
+  verify:
+    name: Typecheck, lint, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit test
+        run: pnpm test
+
+      # ---------------------------------------------------------
+      # GOLDEN TEST — gerbang rilis.
+      # Angka di fixtures/ berasal dari dokumen asli klien.
+      # Kalau ini merah, JANGAN ubah angkanya. Perbaiki kodenya.
+      # Lihat .clinerules/04-testing.md
+      # ---------------------------------------------------------
+      - name: Golden test (angka klien)
+        run: pnpm test:golden
+
+  # ---------------------------------------------------------------
+  # Gerbang 2 — arsitektur. Menegakkan aturan modul dalam.
+  # ---------------------------------------------------------------
+  architecture:
+    name: Batas modul
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Menegakkan: logika uang hanya boleh diakses lewat entry point.
+      # Komponen React DILARANG meng-import modul kalkulasi langsung.
+      # Lihat .clinerules/05-ui-conventions.md
+      - name: dependency-cruiser
+        run: pnpm dlx depcruise src --config .dependency-cruiser.cjs
+
+  # ---------------------------------------------------------------
+  # Gerbang 3 — UI. Alur approval tidak bisa diuji unit saja.
+  # ---------------------------------------------------------------
+  e2e:
+    name: Playwright
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: verify
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: isli_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/isli_test
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Migrasi database uji
+        run: pnpm db:migrate
+
+      - name: Seed data uji
+        run: pnpm db:seed
+
+      - name: Install browser Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E
+        run: pnpm test:e2e
+
+      - name: Simpan laporan kalau gagal
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # ---------------------------------------------------------------
+  # Gerbang 4 — build produksi benar-benar jadi.
+  # ---------------------------------------------------------------
+  build:
+    name: Build produksi
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: verify
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+        env:
+          # Nilai boneka; build Next.js butuh variabel ini ada, bukan valid.
+          DATABASE_URL: postgresql://user:pass@localhost:5432/dummy
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy

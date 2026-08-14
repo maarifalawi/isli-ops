@@ -1,0 +1,63 @@
+---
+description: Larangan keras proyek ISLI. Berlaku di semua percakapan.
+alwaysApply: true
+---
+
+# Pagar keras — ISLI Ops
+
+> Berkas ini **cadangan**. Agen utama proyek ini adalah **Cline**, yang membaca
+> `.clinerules/`. Berkas ini hanya aktif kalau kamu memakai Chat/Composer bawaan
+> Cursor. Kalau kedua sumber bertabrakan, **`.clinerules/` yang menang.**
+>
+> Aturan lengkap ada di `.clinerules/`. Yang di sini cuma yang paling fatal.
+
+## Uang
+
+- Semua nilai uang `BIGINT` rupiah bulat. **Tidak ada float. Tidak ada desimal.**
+- Pajak lewat `applyRateBp(base, bp)`. `PPN_RATE_BP = 110`, `PPH23_RATE_BP = 200`.
+- **Jangan pernah menghitung uang di dalam komponen React.** Komponen hanya memformat.
+  Kalau kamu merasa butuh menghitung di sana, ada kalkulasi server yang belum dibuat.
+- `pph23Applicable` selalu eksplisit. **Jangan pernah disimpulkan** dari data lain.
+
+## Golden test
+
+- Angka di `fixtures/` berasal dari dokumen asli klien. **Jangan diubah, selamanya.**
+- Golden test merah artinya **kodenya salah**, bukan angkanya.
+- **Dilarang keras:** `toBeCloseTo`, toleransi epsilon, `it.skip`, `it.todo`, atau
+  mengubah nilai harapan supaya hijau.
+- Selisih Rp 1 pada invoice Diametral **memang sengaja merah**. Biarkan sampai
+  pertanyaan A2 dijawab klien.
+
+## Database
+
+- `drizzle-kit push` **dilarang**. Selalu `db:generate` → baca SQL-nya → `db:migrate`.
+- `audit_log` append-only. Jangan pernah `UPDATE` atau `DELETE`.
+- Data tidak pernah dihapus permanen. Soft delete — kewajiban simpan 10 tahun.
+
+## Izin
+
+- Selalu `assertCan(...)`. **Jangan pernah** membandingkan `role === "OWNER"`.
+- Pembuat tidak boleh menyetujui pekerjaannya sendiri.
+- Persetujuan final hanya OWNER.
+
+## Warna & UI
+
+- Hanya token dari `docs/DESIGN-SYSTEM.md`. **Palet bawaan Tailwind dilarang** —
+  tidak ada `bg-blue-500`, `text-slate-600`, `emerald`, `amber`, `rose`, dan sejenisnya.
+- Tidak ada `box-shadow` pada elemen UI. Pakai hairline `1px #e0e0e0`.
+- Tidak ada gradien. Tidak ada emoji sebagai ikon.
+- Warna semantik hanya untuk teks, angka, garis tepi, dan titik 6px — **tidak pernah
+  sebagai latar blok.**
+- Semua angka `tabular-nums`, rata kanan, `toLocaleString("id-ID")`.
+
+## Bahasa
+
+- Antarmuka berbahasa Indonesia. Istilah dagang **tidak diterjemahkan**:
+  `job`, `invoice`, `vendor`, `freight`, `trucking`, `dooring`, `vessel`, `THC`,
+  `LSS`, `THD`, `POD`, `FCL`, `LCL`, `ETD`, `TOP`, `GP`, `NETT`.
+
+## Kalau ragu
+
+Berhenti. Tambahkan pertanyaannya ke `docs/OPEN-QUESTIONS.md`. **Jangan menebak.**
+Menebak di sistem yang menghitung pajak menghasilkan invoice salah yang sudah terkirim
+ke customer sebelum ada yang sadar.

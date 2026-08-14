@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ISLI Ops</title>
+<style>
+:root{
+  --canvas:#ffffff; --parchment:#f5f5f7; --pearl:#fafafc;
+  --ink:#1d1d1f; --ink-80:#333333; --ink-48:#7a7a7a;
+  --hairline:#e0e0e0; --divider:#f0f0f0;
+  --accent:#0066cc; --accent-focus:#0071e3;
+  --red:#d70015; --orange:#c93400; --green:#248a3d; --gray:#6c6c70;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"SF Pro Text",-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  font-size:13px; line-height:1.45; color:var(--ink);
+  background:var(--parchment);
+  -webkit-font-smoothing:antialiased;
+}
+.num{font-variant-numeric:tabular-nums}
+.app{max-width:1180px;margin:0 auto;background:var(--canvas);min-height:100vh}
+
+/* nav atas */
+.topbar{background:#000;color:#fff;height:44px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 20px;position:sticky;top:0;z-index:30}
+.brand{display:flex;align-items:center;gap:10px;font-size:12px;letter-spacing:-.12px}
+.mark{width:22px;height:22px;border-radius:5px;background:var(--accent);
+  display:grid;place-items:center;font-size:10px;font-weight:600}
+.who{display:flex;align-items:center;gap:10px;font-size:12px}
+.avatar{width:24px;height:24px;border-radius:9999px;background:#2a2a2c;
+  display:grid;place-items:center;font-size:10px;font-weight:600}
+
+/* sub nav */
+.subnav{background:rgba(245,245,247,.82);backdrop-filter:saturate(180%) blur(20px);
+  border-bottom:1px solid var(--hairline);position:sticky;top:44px;z-index:20;
+  display:flex;align-items:center;gap:2px;padding:0 12px;overflow-x:auto}
+.subnav::-webkit-scrollbar{display:none}
+.tab{background:none;border:none;font:inherit;font-size:12px;color:var(--ink-48);
+  padding:14px 12px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;
+  transition:color .15s}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ink);font-weight:600;border-bottom-color:var(--ink)}
+.pipcount{color:var(--red);font-weight:600;margin-left:5px}
+
+main{padding:24px 20px 40px}
+.page{display:none}
+.page.on{display:block}
+
+h1{font-size:20px;font-weight:600;letter-spacing:-.35px}
+.sub{font-size:12px;color:var(--ink-48);margin-top:2px}
+.hd{font-size:15px;font-weight:600;letter-spacing:-.2px}
+
+/* kartu */
+.card{background:var(--canvas);border:1px solid var(--hairline);border-radius:11px}
+.card-pad{padding:16px}
+.card-hd{padding:12px 16px;border-bottom:1px solid var(--divider);
+  font-size:12px;font-weight:600;letter-spacing:.02em;color:var(--ink-80)}
+
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat .k{font-size:11px;color:var(--ink-48);letter-spacing:.03em;text-transform:uppercase}
+.stat .v{font-size:22px;font-weight:600;letter-spacing:-.4px;margin-top:6px}
+.stat .m{font-size:11px;color:var(--ink-48);margin-top:2px}
+
+/* tabel */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:var(--parchment);font-size:11px;font-weight:400;color:var(--ink-48);
+  text-transform:uppercase;letter-spacing:.04em;padding:8px 12px;text-align:left;
+  border-bottom:1px solid var(--hairline);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--divider);font-size:13px}
+tbody tr:hover{background:var(--parchment)}
+.r{text-align:right}
+.c{text-align:center}
+tfoot td{background:var(--parchment);font-weight:600;border-bottom:none;border-top:1px solid var(--hairline)}
+.flag{background:rgba(215,0,21,.05)}
+
+/* badge = titik + teks */
+.dot{display:inline-block;width:6px;height:6px;border-radius:9999px;margin-right:6px;
+  vertical-align:middle}
+.bg-t{font-size:12px;white-space:nowrap}
+
+/* tombol */
+.btn{font:inherit;font-size:13px;border-radius:9999px;padding:0 18px;height:32px;
+  cursor:pointer;border:1px solid transparent;transition:transform .1s;white-space:nowrap}
+.btn:active{transform:scale(.96)}
+.btn-p{background:var(--accent);color:#fff}
+.btn-s{background:transparent;color:var(--accent);border-color:var(--accent)}
+.btn-n{background:var(--pearl);color:var(--ink-80);border-color:var(--divider);border-radius:11px}
+.btn-d{background:transparent;color:var(--red);border-color:var(--red)}
+.btn-lg{height:40px;padding:0 24px}
+.btn:focus-visible{outline:2px solid var(--accent-focus);outline-offset:2px}
+
+.inp{font:inherit;font-size:13px;width:100%;height:36px;padding:0 12px;
+  border:1px solid var(--hairline);border-radius:8px;background:var(--canvas);color:var(--ink)}
+.inp:focus{outline:2px solid var(--accent-focus);outline-offset:-1px;border-color:var(--accent)}
+
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px}
+.muted{color:var(--ink-48)}
+.red{color:var(--red)} .grn{color:var(--green)} .org{color:var(--orange)}
+.b6{font-weight:600}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt24{margin-top:24px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px}
+
+.note{background:var(--parchment);border-radius:8px;padding:10px 12px;
+  font-size:12px;color:var(--ink-80)}
+
+.banner{background:var(--parchment);border-bottom:1px solid var(--hairline);
+  padding:7px 20px;font-size:11px;color:var(--ink-48);text-align:center}
+
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);
+  background:var(--ink);color:#fff;font-size:12px;padding:10px 18px;border-radius:11px;
+  opacity:0;pointer-events:none;transition:opacity .2s;z-index:50}
+
+.cards{display:none}
+.steps{display:flex;align-items:center;gap:8px}
+.step{flex:1;text-align:center}
+.circ{width:28px;height:28px;border-radius:9999px;display:grid;place-items:center;
+  margin:0 auto;font-size:11px;font-weight:600}
+.line{height:1px;flex:1;background:var(--hairline)}
+.line.done{background:var(--green)}
+
+footer{border-top:1px solid var(--divider);padding:20px;text-align:center;
+  font-size:11px;color:var(--ink-48)}
+
+@media(max-width:860px){
+  .grid4{grid-template-columns:1fr 1fr}
+}
+@media(max-width:640px){
+  main{padding:16px 14px 90px}
+  .grid2{grid-template-columns:1fr}
+  .tw.mob{display:none}
+  .cards{display:block}
+  .btn{height:44px;padding:0 20px}
+  .btn-lg{height:44px}
+  .stat .v{font-size:19px}
+  .stick{position:fixed;left:0;right:0;bottom:0;background:rgba(255,255,255,.94);
+    backdrop-filter:blur(20px);border-top:1px solid var(--hairline);
+    padding:10px 14px;display:flex;gap:8px;z-index:40}
+  .stick .btn{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="banner">PROTOTIPE — tampilan saja, belum tersambung database. Angka dari data ISLI April–Juli 2026.</div>
+
+<div class="topbar">
+  <div class="brand">
+    <div class="mark">IS</div>
+    <span>ISLI Ops</span>
+  </div>
+  <div class="who">
+    <span class="muted" style="color:#cccccc">Pak Indra</span>
+    <div class="avatar">PI</div>
+  </div>
+</div>
+
+<nav class="subnav">
+  <button class="tab on" id="t-dash"   onclick="go('dash')">Ringkasan</button>
+  <button class="tab"    id="t-jobs"   onclick="go('jobs')">Daftar Job</button>
+  <button class="tab"    id="t-detail" onclick="go('detail')">Detail Job</button>
+  <button class="tab"    id="t-appr"   onclick="go('appr')">Persetujuan<span class="pipcount">3</span></button>
+  <button class="tab"    id="t-inv"    onclick="go('inv')">Invoice</button>
+</nav>
+
+<main>
+
+<!-- ───── RINGKASAN ───── -->
+<section id="p-dash" class="page on">
+  <h1>Ringkasan Operasional</h1>
+  <div class="sub">April – Juli 2026 · 75 job</div>
+
+  <div class="grid4 mt16">
+    <div class="card card-pad stat"><div class="k">Penjualan</div><div class="v num">2.063.427.693</div><div class="m">4 bulan</div></div>
+    <div class="card card-pad stat"><div class="k">Biaya</div><div class="v num">1.783.277.693</div><div class="m">86,4% dari penjualan</div></div>
+    <div class="card card-pad stat"><div class="k">GP Sebenarnya</div><div class="v num grn">280.150.000</div><div class="m">13,58%</div></div>
+    <div class="card card-pad stat"><div class="k">Rata-rata GP / Job</div><div class="v num">3.735.333</div><div class="m">75 job</div></div>
+  </div>
+
+  <!-- ══════════ TEMUAN 1 ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd"><span class="dot" style="background:var(--red)"></span>Temuan 1 — selisih pada laporan</div>
+    <div class="card-pad">
+      <div class="row">
+        <div class="hd">Keuntungan yang tidak tercatat</div>
+        <div class="num b6 red" style="font-size:20px;letter-spacing:-.4px">22.500.000</div>
+      </div>
+      <p class="muted mt8" style="font-size:12px;max-width:640px">
+        Rumus GP bulan Juni menarik angka dari baris satu job, bukan dari baris subtotal.
+        Penjualan dan biayanya sudah benar — hanya GP-nya yang tertinggal.
+      </p>
+      <div class="note mono mt12" style="line-height:1.9">
+        D19 = EXIM!O50 &nbsp;&larr; penjualan, subtotal &nbsp;<span class="grn">benar</span><br>
+        E19 = EXIM!P50 &nbsp;&larr; biaya, subtotal &nbsp;&nbsp;&nbsp;&nbsp;<span class="grn">benar</span><br>
+        F19 = EXIM!Q39 &nbsp;&larr; GP, satu job &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="red b6">salah</span>
+      </div>
+      <div class="mt12" style="font-size:12px">
+        Seharusnya <span class="num">Q50 = 23.500.000</span> &nbsp;·&nbsp;
+        tertulis <span class="num">Q39 = 1.000.000</span>
+      </div>
+      <div class="mt12" style="font-size:12px;padding-top:12px;border-top:1px solid var(--divider)">
+        Terjadi dalam 4 bulan. Kalau polanya sama, setahun →
+        <span class="num b6 red">67.500.000</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ GRAFIK: GP PER BULAN ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd">GP per Bulan — Excel dibanding perhitungan ulang</div>
+    <div class="card-pad">
+      <div style="display:flex;gap:18px;font-size:11px;color:var(--ink-48);margin-bottom:10px">
+        <span><span style="display:inline-block;width:9px;height:9px;background:var(--ink-48);border-radius:2px;margin-right:5px"></span>Tercatat di Excel</span>
+        <span><span style="display:inline-block;width:9px;height:9px;background:var(--accent);border-radius:2px;margin-right:5px"></span>Perhitungan ulang</span>
+      </div>
+
+      <svg viewBox="0 0 680 215" style="width:100%;height:auto;display:block" role="img" aria-label="Grafik batang GP per bulan">
+        <line x1="40" y1="180" x2="660" y2="180" stroke="#e0e0e0"/>
+        <line x1="40" y1="105" x2="660" y2="105" stroke="#f0f0f0"/>
+        <line x1="40" y1="30"  x2="660" y2="30"  stroke="#f0f0f0"/>
+        <text x="34" y="184" text-anchor="end" font-size="10" fill="#7a7a7a">0</text>
+        <text x="34" y="109" text-anchor="end" font-size="10" fill="#7a7a7a">60jt</text>
+        <text x="34" y="34"  text-anchor="end" font-size="10" fill="#7a7a7a">120jt</text>
+
+        <!-- April -->
+        <rect x="85"  y="120" width="26" height="60"  fill="#7a7a7a"/>
+        <rect x="115" y="120" width="26" height="60"  fill="#0066cc"/>
+        <text x="113" y="197" text-anchor="middle" font-size="11" fill="#333333">April</text>
+        <text x="113" y="112" text-anchor="middle" font-size="10" fill="#7a7a7a">47,8jt</text>
+
+        <!-- Mei -->
+        <rect x="235" y="30"  width="26" height="150" fill="#7a7a7a"/>
+        <rect x="265" y="30"  width="26" height="150" fill="#0066cc"/>
+        <text x="263" y="197" text-anchor="middle" font-size="11" fill="#333333">Mei</text>
+        <text x="263" y="22"  text-anchor="middle" font-size="10" fill="#7a7a7a">119,3jt</text>
+
+        <!-- Juni — satu-satunya yang berbeda -->
+        <rect x="385" y="107" width="26" height="73"  fill="#7a7a7a"/>
+        <rect x="415" y="79"  width="26" height="101" fill="#0066cc"/>
+        <text x="413" y="197" text-anchor="middle" font-size="11" fill="#333333">Juni</text>
+        <text x="398" y="101" text-anchor="middle" font-size="10" fill="#7a7a7a">57,7jt</text>
+        <text x="432" y="73"  text-anchor="middle" font-size="10" fill="#d70015" font-weight="600">80,2jt</text>
+        <line x1="455" y1="79" x2="455" y2="107" stroke="#d70015" stroke-width="1.5"/>
+        <line x1="451" y1="79" x2="459" y2="79"  stroke="#d70015" stroke-width="1.5"/>
+        <line x1="451" y1="107" x2="459" y2="107" stroke="#d70015" stroke-width="1.5"/>
+        <text x="465" y="96" font-size="10" fill="#d70015" font-weight="600">+22,5jt</text>
+
+        <!-- Juli -->
+        <rect x="535" y="139" width="26" height="41"  fill="#7a7a7a"/>
+        <rect x="565" y="139" width="26" height="41"  fill="#0066cc"/>
+        <text x="563" y="197" text-anchor="middle" font-size="11" fill="#333333">Juli</text>
+        <text x="563" y="131" text-anchor="middle" font-size="10" fill="#7a7a7a">32,9jt</text>
+      </svg>
+
+      <p class="muted mt12" style="font-size:12px">
+        Tiga bulan cocok persis. Hanya Juni yang berbeda — dan bedanya bukan sedikit.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════ TEMUAN 2: MARGIN TURUN ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd"><span class="dot" style="background:var(--orange)"></span>Temuan 2 — margin turun empat bulan berturut-turut</div>
+    <div class="card-pad">
+
+      <svg viewBox="0 0 680 200" style="width:100%;height:auto;display:block" role="img" aria-label="Grafik garis margin per bulan">
+        <line x1="45" y1="160" x2="660" y2="160" stroke="#e0e0e0"/>
+        <line x1="45" y1="100" x2="660" y2="100" stroke="#f0f0f0"/>
+        <line x1="45" y1="40"  x2="660" y2="40"  stroke="#f0f0f0"/>
+        <text x="39" y="164" text-anchor="end" font-size="10" fill="#7a7a7a">0%</text>
+        <text x="39" y="104" text-anchor="end" font-size="10" fill="#7a7a7a">10%</text>
+        <text x="39" y="44"  text-anchor="end" font-size="10" fill="#7a7a7a">20%</text>
+
+        <polyline points="110,64.7 260,76.2 410,81.8 560,92.7"
+                  fill="none" stroke="#c93400" stroke-width="2"/>
+
+        <circle cx="110" cy="64.7" r="4" fill="#c93400"/>
+        <circle cx="260" cy="76.2" r="4" fill="#c93400"/>
+        <circle cx="410" cy="81.8" r="4" fill="#c93400"/>
+        <circle cx="560" cy="92.7" r="4" fill="#c93400"/>
+
+        <text x="110" y="54" text-anchor="middle" font-size="11" fill="#1d1d1f" font-weight="600">15,9%</text>
+        <text x="260" y="66" text-anchor="middle" font-size="11" fill="#1d1d1f" font-weight="600">14,0%</text>
+        <text x="410" y="71" text-anchor="middle" font-size="11" fill="#1d1d1f" font-weight="600">13,0%</text>
+        <text x="560" y="82" text-anchor="middle" font-size="11" fill="#c93400" font-weight="600">11,2%</text>
+
+        <text x="110" y="180" text-anchor="middle" font-size="11" fill="#333333">April</text>
+        <text x="260" y="180" text-anchor="middle" font-size="11" fill="#333333">Mei</text>
+        <text x="410" y="180" text-anchor="middle" font-size="11" fill="#333333">Juni</text>
+        <text x="560" y="180" text-anchor="middle" font-size="11" fill="#333333">Juli</text>
+      </svg>
+
+      <p class="muted mt12" style="font-size:12px;max-width:660px">
+        Margin turun dari 15,9% ke 11,2% dalam empat bulan — turun terus, tidak naik-turun.
+        Ini dihitung dari angka yang sudah diperbaiki, jadi bukan akibat kesalahan rumus tadi.
+        Penyebabnya belum diketahui. Laporan bulanan yang berjalan tidak menampilkan ini,
+        karena tiap bulan dilihat sendiri-sendiri.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════ PENJUALAN vs BIAYA ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd">Penjualan dan Biaya per Bulan</div>
+    <div class="card-pad">
+      <div style="display:flex;gap:18px;font-size:11px;color:var(--ink-48);margin-bottom:10px">
+        <span><span style="display:inline-block;width:9px;height:9px;background:#c7c7cc;border-radius:2px;margin-right:5px"></span>Biaya</span>
+        <span><span style="display:inline-block;width:9px;height:9px;background:var(--green);border-radius:2px;margin-right:5px"></span>Keuntungan kotor</span>
+      </div>
+
+      <svg viewBox="0 0 680 215" style="width:100%;height:auto;display:block" role="img" aria-label="Grafik batang penjualan dan biaya per bulan">
+        <line x1="50" y1="180" x2="660" y2="180" stroke="#e0e0e0"/>
+        <line x1="50" y1="92"  x2="660" y2="92"  stroke="#f0f0f0"/>
+        <line x1="50" y1="30"  x2="660" y2="30"  stroke="#f0f0f0"/>
+        <text x="44" y="184" text-anchor="end" font-size="10" fill="#7a7a7a">0</text>
+        <text x="44" y="96"  text-anchor="end" font-size="10" fill="#7a7a7a">500jt</text>
+        <text x="44" y="34"  text-anchor="end" font-size="10" fill="#7a7a7a">850jt</text>
+
+        <rect x="88"  y="135.6" width="44" height="44.4"  fill="#c7c7cc"/>
+        <rect x="88"  y="127.2" width="44" height="8.4"   fill="#248a3d"/>
+        <text x="110" y="119" text-anchor="middle" font-size="10" fill="#7a7a7a">300,5jt</text>
+        <text x="110" y="197" text-anchor="middle" font-size="11" fill="#333333">April</text>
+
+        <rect x="238" y="51"    width="44" height="129"   fill="#c7c7cc"/>
+        <rect x="238" y="30"    width="44" height="21"    fill="#248a3d"/>
+        <text x="260" y="22"  text-anchor="middle" font-size="10" fill="#7a7a7a">854,1jt</text>
+        <text x="260" y="197" text-anchor="middle" font-size="11" fill="#333333">Mei</text>
+
+        <rect x="388" y="86"    width="44" height="94"    fill="#c7c7cc"/>
+        <rect x="388" y="71.9"  width="44" height="14.1"  fill="#248a3d"/>
+        <text x="410" y="64"  text-anchor="middle" font-size="10" fill="#7a7a7a">615,7jt</text>
+        <text x="410" y="197" text-anchor="middle" font-size="11" fill="#333333">Juni</text>
+
+        <rect x="538" y="134.3" width="44" height="45.7"  fill="#c7c7cc"/>
+        <rect x="538" y="128.5" width="44" height="5.8"   fill="#248a3d"/>
+        <text x="560" y="120" text-anchor="middle" font-size="10" fill="#7a7a7a">293,1jt</text>
+        <text x="560" y="197" text-anchor="middle" font-size="11" fill="#333333">Juli</text>
+      </svg>
+
+      <p class="muted mt12" style="font-size:12px">
+        Pita hijau adalah bagian yang tinggal di ISLI. Mei terlihat besar, tapi pitanya
+        tidak ikut membesar sebanding.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══════════ TABEL BULANAN ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd">Rincian per Bulan</div>
+    <div class="tw">
+      <table class="num">
+        <thead><tr>
+          <th>Bulan</th><th class="r">Penjualan</th><th class="r">Biaya</th>
+          <th class="r">GP di Excel</th><th class="r">GP Sistem</th><th class="r">Selisih</th><th class="r">Margin</th>
+        </tr></thead>
+        <tbody>
+          <tr><td>April</td><td class="r">300.500.000</td><td class="r">252.750.000</td><td class="r">47.750.000</td><td class="r">47.750.000</td><td class="r muted">—</td><td class="r">15,9%</td></tr>
+          <tr><td>Mei</td><td class="r">854.105.167</td><td class="r">734.805.167</td><td class="r">119.300.000</td><td class="r">119.300.000</td><td class="r muted">—</td><td class="r">14,0%</td></tr>
+          <tr class="bg-t"><td>Juni</td><td class="r">615.722.526</td><td class="r">535.522.526</td><td class="r">57.700.000</td><td class="r b6">80.200.000</td><td class="r b6 red">22.500.000</td><td class="r">13,0%</td></tr>
+          <tr><td>Juli</td><td class="r">293.100.000</td><td class="r">260.200.000</td><td class="r">32.900.000</td><td class="r">32.900.000</td><td class="r muted">—</td><td class="r org">11,2%</td></tr>
+        </tbody>
+        <tfoot><tr>
+          <td class="b6">Total</td>
+          <td class="r b6">2.063.427.693</td>
+          <td class="r b6">1.783.277.693</td>
+          <td class="r b6">257.650.000</td>
+          <td class="r b6 grn">280.150.000</td>
+          <td class="r b6 red">22.500.000</td>
+          <td class="r b6">13,6%</td>
+        </tr></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════ PANEL YANG BUTUH DATA ══════════ -->
+  <div class="card mt16">
+    <div class="card-hd"><span class="dot" style="background:var(--ink-48)"></span>Panel berikutnya — menunggu data</div>
+    <div class="card-pad">
+      <p class="muted" style="font-size:12px;max-width:660px">
+        Empat panel di bawah ini berasal langsung dari kebutuhan yang disebut saat rapat.
+        Semuanya <b>belum bisa diisi</b> karena datanya ada di berkas <span class="mono">SO BULAN *.xlsx</span>
+        yang belum kami terima. Sengaja dikosongkan — bukan diisi angka karangan.
+      </p>
+
+      <div class="grid2 mt16">
+        <div class="note">
+          <div class="b6" style="font-size:12.5px">Piutang belum tertagih</div>
+          <p class="muted mt8" style="font-size:11.5px;margin:0">
+            Job selesai tapi POD belum kembali ke Jakarta, jadi invoice belum bisa keluar.
+            Dikelompokkan per umur: &lt;7 hari, 7–14, 14–30, &gt;30.
+            <br><br><i>Butuh: tanggal POD per job.</i>
+          </p>
+        </div>
+
+        <div class="note">
+          <div class="b6" style="font-size:12.5px">Utang vendor per termin</div>
+          <p class="muted mt8" style="font-size:11.5px;margin:0">
+            Sea freight tunai, trucking dan delivery tempo. Yang jatuh tempo minggu ini,
+            dan berapa yang harus disiapkan.
+            <br><br><i>Butuh: termin per vendor.</i>
+          </p>
+        </div>
+
+        <div class="note">
+          <div class="b6" style="font-size:12.5px">PPh 23 dipotong per vendor</div>
+          <p class="muted mt8" style="font-size:11.5px;margin:0">
+            Rekap bulanan per vendor untuk pelaporan pajak — permintaan langsung Bu Niken.
+            Termasuk total pembayaran ke tiap vendor dalam satu bulan.
+            <br><br><i>Butuh: jawaban soal aturan PPh 23.</i>
+          </p>
+        </div>
+
+        <div class="note">
+          <div class="b6" style="font-size:12.5px">Job bermargin tipis</div>
+          <p class="muted mt8" style="font-size:11.5px;margin:0">
+            Sebaran margin seluruh job, dengan job di bawah 8% ditandai. Ini yang akan
+            menjelaskan kenapa margin turun empat bulan berturut-turut.
+            <br><br><i>Butuh: rincian 75 job.</i>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</section>
+
+<section id="p-jobs" class="page">
+  <div class="row">
+    <h1>Daftar Job</h1>
+    <button class="btn btn-p" onclick="toast('Form job baru')">Job Baru</button>
+  </div>
+  <input class="inp mt16" placeholder="Cari nomor job atau customer" oninput="filt(this.value)">
+
+  <div class="card mt12 tw mob"><table>
+    <thead><tr>
+      <th>No. Job</th><th>Customer</th><th>Rute</th>
+      <th class="r">Penjualan</th><th class="r">Biaya</th><th class="r">GP</th><th>Status</th>
+    </tr></thead>
+    <tbody id="tb-jobs"></tbody>
+  </table></div>
+
+  <div class="cards mt12" id="cd-jobs"></div>
+</section>
+
+<!-- ───── DETAIL ───── -->
+<section id="p-detail" class="page">
+  <div class="row">
+    <div>
+      <h1>ISLI-26.08-005</h1>
+      <div class="sub">TOTAL BANGUN PERSADA · Jakarta → Batam · 2X20' FCL</div>
+    </div>
+    <span class="bg-t"><span class="dot" style="background:var(--orange)"></span>Menunggu Final</span>
+  </div>
+
+  <div class="grid4 mt16">
+    <div class="card card-pad stat"><div class="k">Vessel</div><div style="font-size:13px;margin-top:5px">KM. ICON IBRANI V.81</div></div>
+    <div class="card card-pad stat"><div class="k">ETD</div><div style="font-size:13px;margin-top:5px">14 Agu 2026</div></div>
+    <div class="card card-pad stat"><div class="k">Service</div><div style="font-size:13px;margin-top:5px">FCL</div></div>
+    <div class="card card-pad stat"><div class="k">Sales</div><div style="font-size:13px;margin-top:5px">KIM</div></div>
+  </div>
+
+  <div class="card mt16">
+    <div class="card-hd">Penjualan</div>
+    <div class="tw"><table class="num">
+      <thead><tr><th>Deskripsi</th><th class="r">Jumlah</th><th class="r">PPN 1,1%</th><th class="r">Total</th></tr></thead>
+      <tbody>
+        <tr><td>FREIGHT JKT-BTH</td><td class="r">38.000.000</td><td class="r">418.000</td><td class="r b6">38.418.000</td></tr>
+        <tr><td>CHARGE LOLO <span class="muted" style="font-size:11px">· reimburse</span></td><td class="r">645.000</td><td class="r muted">—</td><td class="r b6">645.000</td></tr>
+      </tbody>
+      <tfoot><tr><td>Subtotal</td><td class="r">38.645.000</td><td class="r">418.000</td><td class="r">39.063.000</td></tr></tfoot>
+    </table></div>
+  </div>
+
+  <div class="card mt12">
+    <div class="card-hd">Biaya · 12 baris</div>
+    <div class="tw"><table class="num">
+      <thead><tr><th>Deskripsi</th><th>Vendor</th><th class="r">Jumlah</th><th class="c">Bayar</th></tr></thead>
+      <tbody id="tb-buy"></tbody>
+      <tfoot><tr><td colspan="2">Total Biaya</td><td class="r">32.085.000</td><td></td></tr></tfoot>
+    </table></div>
+  </div>
+
+  <div class="grid2 mt12">
+    <div class="card card-pad">
+      <div class="row"><span class="muted" style="font-size:12px">GP</span><span class="muted" style="font-size:11px">15,57%</span></div>
+      <div class="num grn" style="font-size:22px;font-weight:600;letter-spacing:-.4px;margin-top:4px">5.915.000</div>
+      <div class="mono muted mt8">38.000.000 − 32.085.000</div>
+    </div>
+    <div class="card card-pad">
+      <div class="row"><span class="muted" style="font-size:12px">NETT</span><span class="muted" style="font-size:11px">16,48%</span></div>
+      <div class="num" style="font-size:22px;font-weight:600;letter-spacing:-.4px;margin-top:4px">6.333.000</div>
+      <div class="mono muted mt8">38.418.000 − 32.085.000</div>
+    </div>
+  </div>
+
+  <div class="card mt12">
+    <div class="card-hd"><span class="dot" style="background:var(--orange)"></span>Dua versi biaya untuk job ini</div>
+    <div class="card-pad">
+      <p class="muted" style="font-size:12px">Versi cetak punya satu baris yang tidak ada di file Excel.</p>
+      <div class="tw mt12"><table class="num">
+        <tbody>
+          <tr><td class="muted">Versi Excel</td><td class="r">32.085.000</td><td class="r grn">GP 15,57%</td></tr>
+          <tr><td class="muted">Versi cetak</td><td class="r">34.535.000</td><td class="r red">GP 9,12%</td></tr>
+          <tr class="flag"><td class="b6">CHARGE TRUCKING</td><td class="r b6">2.500.000</td><td class="r muted" style="font-size:11px">hanya di versi cetak</td></tr>
+        </tbody>
+      </table></div>
+      <div class="mt12" style="font-size:12px">Selisih margin <span class="b6 red">6,45 poin</span>. Hari ini tidak ada yang menangkap ini.</div>
+    </div>
+  </div>
+
+  <div class="mt16 stick" style="display:flex;gap:8px">
+    <button class="btn btn-p btn-lg" onclick="toast('Job disetujui — status jadi Final')">Setujui Final</button>
+    <button class="btn btn-n btn-lg" onclick="toast('Job dikembalikan ke pembuat')">Kembalikan</button>
+  </div>
+</section>
+
+<!-- ───── PERSETUJUAN ───── -->
+<section id="p-appr" class="page">
+  <h1>Menunggu Persetujuan Anda</h1>
+  <div class="sub">3 job siap disetujui final</div>
+
+  <div class="card card-pad mt16">
+    <div class="steps">
+      <div class="step">
+        <div class="circ" style="background:var(--green);color:#fff">✓</div>
+        <div style="font-size:12px;margin-top:6px">Staff</div>
+        <div class="muted" style="font-size:11px">Fairol</div>
+      </div>
+      <div class="line done"></div>
+      <div class="step">
+        <div class="circ" style="background:var(--green);color:#fff">✓</div>
+        <div style="font-size:12px;margin-top:6px">Manager</div>
+        <div class="muted" style="font-size:11px">Bu Niken</div>
+      </div>
+      <div class="line"></div>
+      <div class="step">
+        <div class="circ" style="background:var(--accent);color:#fff">3</div>
+        <div style="font-size:12px;margin-top:6px">Owner</div>
+        <div style="font-size:11px;color:var(--accent)">Anda</div>
+      </div>
+    </div>
+    <div class="note mt16">
+      Setelah final, job terkunci. Membuka kembali akan membatalkan seluruh
+      persetujuan — prosesnya mulai dari awal.
+    </div>
+  </div>
+
+  <div id="ls-appr" class="mt12"></div>
+</section>
+
+<!-- ───── INVOICE ───── -->
+<section id="p-inv" class="page">
+  <h1>Invoice</h1>
+
+  <div class="card mt16">
+    <div class="card-hd row">
+      <span class="mono">017-INVDOM/ISLI-26.06-012/VII/2026</span>
+      <span class="bg-t"><span class="dot" style="background:var(--green)"></span>Lunas</span>
+    </div>
+    <div class="card-pad">
+      <div class="muted" style="font-size:12px">PT. MATEREE NUSANTARA UTAMA · NPWP 634484505071000</div>
+      <table class="num mt12">
+        <tbody>
+          <tr><td class="muted">Sub Total</td><td class="r">23.600.000</td></tr>
+          <tr><td class="muted">Reimbursement</td><td class="r muted">(1.000.000)</td></tr>
+          <tr><td class="muted">DPP</td><td class="r">22.600.000</td></tr>
+          <tr><td class="muted">PPN 1,1%</td><td class="r">248.600</td></tr>
+          <tr><td class="muted">PPh 23 — 2%</td><td class="r muted">—</td></tr>
+        </tbody>
+        <tfoot><tr><td class="b6">Grand Total</td><td class="r b6" style="font-size:15px">23.848.600</td></tr></tfoot>
+      </table>
+      <div class="muted mt12" style="font-size:11px">Terbit 14 Jul 2026 · TOP 30 hari · Jatuh tempo 13 Agu 2026</div>
+      <button class="btn btn-s mt16" onclick="toast('PDF dibuat dengan kop surat ISLI')">Unduh PDF</button>
+    </div>
+  </div>
+
+  <div class="card mt12">
+    <div class="card-hd">Pencegahan pembayaran ganda</div>
+    <div class="card-pad">
+      <p class="muted" style="font-size:12px">Kasus 01A / 01B yang disebut Bu Niken tidak bisa terulang.</p>
+      <table class="mt12">
+        <tbody>
+          <tr><td class="mono">SPIL / INV-01A</td><td class="r" style="font-size:12px"><span class="dot" style="background:var(--green)"></span>Tercatat · kena pajak</td></tr>
+          <tr><td class="mono">SPIL / INV-01B</td><td class="r" style="font-size:12px"><span class="dot" style="background:var(--green)"></span>Tercatat · reimburse</td></tr>
+          <tr class="flag"><td class="mono red">SPIL / INV-01A</td><td class="r b6 red" style="font-size:12px">Ditolak · sudah ada</td></tr>
+        </tbody>
+      </table>
+      <div class="note mt12">Dikunci di tingkat database, bukan sekadar peringatan di layar.</div>
+    </div>
+  </div>
+</section>
+
+</main>
+<footer>Prototipe ISLI Ops · 13 Agustus 2026 · Data operasional April–Juli 2026</footer>
+</div>
+<div class="toast" id="tst"></div>
+
+<script>
+const n = v => v.toLocaleString('id-ID');
+
+const bulan = [
+  {b:'April', s:300500000, c:252750000, ge:47750000,  gs:47750000},
+  {b:'Mei',   s:854105167, c:734805167, ge:119300000, gs:119300000},
+  {b:'Juni',  s:615722526, c:535522526, ge:57700000,  gs:80200000},
+  {b:'Juli',  s:293100000, c:260200000, ge:32900000,  gs:32900000},
+];
+
+const jobs = [
+  {no:'ISLI-26.08-005', c:'TOTAL BANGUN PERSADA',  r:'JKT → BTM', s:38000000,  b:32085000,  st:'Menunggu Final'},
+  {no:'ISLI-26.08-004', c:'TOTAL BANGUN PERSADA',  r:'JKT → BTM', s:4000000,   b:2450000,   st:'Final'},
+  {no:'ISLI-26.07-009', c:'GLOBAL INDONESIA ASIA', r:'PRW → SUB', s:31157270,  b:28191923,  st:'Menunggu Final'},
+  {no:'ISLI-26.07-005', c:'TANJUNG UNCANG',        r:'SUB → BTM', s:23700000,  b:21493315,  st:'Final'},
+  {no:'ISLI-26.07-004', c:'TOTAL BANGUN PERSADA',  r:'JKT → BTM', s:16500000,  b:15018500,  st:'Final'},
+  {no:'ISLI-26.07-003', c:'PT DIAMETRAL INVOLUTE', r:'JKT → MNL', s:132623041, b:120000000, st:'Menunggu Final'},
+  {no:'ISLI-26.06-012', c:'MATEREE NUSANTARA',     r:'Domestik',  s:23600000,  b:19800000,  st:'Lunas'},
+  {no:'ISLI-26.06-004', c:'PT DIAMETRAL INVOLUTE', r:'JKT → MNL', s:16232014,  b:9839014,   st:'Final'},
+];
+
+const buy = [
+  ['OF','ICON',9577000,1],['BL','ICON',200000,1],['THC LOLO JKT','ICON',4805000,1],
+  ['LSS','ICON',5100000,1],['THD','ICON',2600000,0],['CLEANING','ICON',400000,0],
+  ['TRUCKING','SMT',5200000,1],['DOORING','DANISH',3860000,0],
+  ['HANDLING OPS FREELANCE','OPS',100000,1],['SEGEL','OPS',200000,1],
+  ['MATERAI','OPS',29000,1],['DELIVERY CHARGE','LION',14000,1],
+];
+
+const COL = {'Final':'var(--green)','Lunas':'var(--accent)','Menunggu Final':'var(--orange)'};
+const badge = s => `<span class="bg-t"><span class="dot" style="background:${COL[s]||'var(--gray)'}"></span>${s}</span>`;
+
+document.getElementById('tb-bulan').innerHTML = bulan.map(m=>{
+  const d = m.gs - m.ge;
+  return `<tr class="${d?'flag':''}">
+    <td>${m.b}</td><td class="r">${n(m.s)}</td><td class="r">${n(m.c)}</td>
+    <td class="r ${d?'red':''}">${n(m.ge)}</td>
+    <td class="r ${d?'grn b6':''}">${n(m.gs)}</td>
+    <td class="r ${d?'red b6':'muted'}">${d?n(d):'—'}</td></tr>`;
+}).join('');
+
+function paint(list){
+  document.getElementById('tb-jobs').innerHTML = list.map(j=>{
+    const g=j.s-j.b, p=(g/j.s*100).toFixed(2);
+    return `<tr onclick="go('detail')" style="cursor:pointer" class="num">
+      <td class="mono">${j.no}</td><td>${j.c}</td><td class="muted">${j.r}</td>
+      <td class="r">${n(j.s)}</td><td class="r muted">${n(j.b)}</td>
+      <td class="r b6 ${p<10?'org':'grn'}">${n(g)} <span class="muted" style="font-size:11px">${p}%</span></td>
+      <td>${badge(j.st)}</td></tr>`;
+  }).join('');
+
+  document.getElementById('cd-jobs').innerHTML = list.map(j=>{
+    const g=j.s-j.b, p=(g/j.s*100).toFixed(2);
+    return `<div class="card card-pad" style="margin-bottom:8px" onclick="go('detail')">
+      <div class="row"><span class="mono b6">${j.no}</span>${badge(j.st)}</div>
+      <div style="font-size:12px;margin-top:4px">${j.c}</div>
+      <div class="muted" style="font-size:11px">${j.r}</div>
+      <div class="row num" style="margin-top:10px;padding-top:10px;border-top:1px solid var(--divider)">
+        <span class="muted" style="font-size:12px">GP</span>
+        <span class="b6 ${p<10?'org':'grn'}">${n(g)} · ${p}%</span></div>
+    </div>`;
+  }).join('');
+}
+paint(jobs);
+const filt = q => paint(jobs.filter(j=>(j.no+j.c).toLowerCase().includes(q.toLowerCase())));
+
+document.getElementById('tb-buy').innerHTML = buy.map(([d,v,a,p])=>
+  `<tr><td>${d}</td><td class="muted">${v}</td><td class="r">${n(a)}</td>
+   <td class="c" style="font-size:12px"><span class="dot" style="background:${p?'var(--green)':'var(--gray)'}"></span>${p?'Lunas':'Belum'}</td></tr>`
+).join('');
+
+document.getElementById('ls-appr').innerHTML = jobs.filter(j=>j.st==='Menunggu Final').map(j=>{
+  const g=j.s-j.b, p=(g/j.s*100).toFixed(2);
+  return `<div class="card card-pad" style="margin-bottom:8px">
+    <div class="row">
+      <div><div class="mono b6">${j.no}</div>
+        <div style="font-size:12px;margin-top:2px">${j.c}</div>
+        <div class="muted" style="font-size:11px">${j.r}</div></div>
+      <div style="text-align:right" class="num">
+        <div class="b6 ${p<10?'org':'grn'}" style="font-size:15px">${n(g)}</div>
+        <div class="muted" style="font-size:11px">GP ${p}%</div></div>
+    </div>
+    ${p<10?'<div class="note mt12" style="font-size:11px"><span class="dot" style="background:var(--orange)"></span>Margin di bawah 10% — perlu diperiksa</div>':''}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-n" style="flex:1" onclick="go('detail')">Lihat Detail</button>
+      <button class="btn btn-p" style="flex:1" onclick="event.stopPropagation();toast('${j.no} disetujui')">Setujui</button>
+    </div></div>`;
+}).join('');
+
+function go(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('p-'+id).classList.add('on');
+  document.getElementById('t-'+id).classList.add('on');
+  scrollTo({top:0,behavior:'smooth'});
+}
+
+let h;
+function toast(m){
+  const e=document.getElementById('tst');
+  e.textContent=m; e.style.opacity='1';
+  clearTimeout(h); h=setTimeout(()=>e.style.opacity='0',2200);
+}
+</script>
+</body>
+</html>
