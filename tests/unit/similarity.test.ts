@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  AMBANG_MIRIP,
+  MAKS_JARAK_LEVENSHTEIN,
+  MIN_PANJANG_LEVENSHTEIN,
+  MIN_PANJANG_MENGANDUNG,
   cariKandidatMirip,
   jarakLevenshtein,
   mirip,
@@ -8,10 +10,10 @@ import {
   similaritasLevenshtein,
 } from "@/lib/similarity/index";
 
-describe("normalisasiTeks", () => {
-  it("huruf kecil + buang tanda baca + padatkan spasi", () => {
-    expect(normalisasiTeks("KM.  Meratus ")).toBe("km meratus");
-    expect(normalisasiTeks("  PT\tSumber  Jaya! ")).toBe("pt sumber jaya");
+describe("normalisasiTeks (RENCANA §7: UPPERCASE + kolaps spasi + trim)", () => {
+  it("huruf besar semua, spasi dipadatkan, ujung dipangkas; tanda baca dibiarkan", () => {
+    expect(normalisasiTeks("KM.  Meratus ")).toBe("KM. MERATUS");
+    expect(normalisasiTeks("  PT\tSumber  Jaya! ")).toBe("PT SUMBER JAYA!");
   });
 });
 
@@ -21,11 +23,11 @@ describe("jarakLevenshtein", () => {
     expect(jarakLevenshtein("", "abc")).toBe(3);
     expect(jarakLevenshtein("abc", "")).toBe(3);
     expect(jarakLevenshtein("kitten", "sitting")).toBe(3);
-    expect(jarakLevenshtein("surabaya", "surabaaya")).toBe(1);
+    expect(jarakLevenshtein("SURABAYA", "SURABAAYA")).toBe(1);
   });
 });
 
-describe("similaritasLevenshtein", () => {
+describe("similaritasLevenshtein (hanya untuk skor/urut kandidat)", () => {
   it("identik = 1; beda total rendah", () => {
     expect(similaritasLevenshtein("tanjung perak", "tanjung perak")).toBe(1);
     expect(similaritasLevenshtein("", "")).toBe(1);
@@ -37,25 +39,62 @@ describe("similaritasLevenshtein", () => {
   });
 });
 
-describe("mirip (ambang 0.85, RENCANA §3.1)", () => {
-  const baris = [
-    { id: "1", nama: "PT Meratus Jaya" },
-    { id: "2", nama: "Pelabuhan Tanjung Perak" },
-    { id: "3", nama: "Samudera Indonesia" },
-  ];
-
-  it("typo dekat dianggap mirip", () => {
-    // 1 karakter ganti dari 15 char -> ~0.93
-    expect(mirip("PT Meratus Jaja", "PT Meratus Jaya")).toBe(true);
-    expect(similaritasLevenshtein("PT Meratus Jaja", "PT Meratus Jaya")).toBeGreaterThanOrEqual(AMBANG_MIRIP);
+describe("mirip (RENCANA §7: mengandung min-4 ATAU lev<=2 utk nama>=5)", () => {
+  it("konstanta aturan terkunci", () => {
+    expect(MIN_PANJANG_MENGANDUNG).toBe(4);
+    expect(MAKS_JARAK_LEVENSHTEIN).toBe(2);
+    expect(MIN_PANJANG_LEVENSHTEIN).toBe(5);
   });
 
-  it("nama beda jelas tidak mirip", () => {
-    expect(mirip("PT Meratus Jaya", "Samudera Indonesia")).toBe(false);
+  it("1. typo 1 karakter dianggap mirip", () => {
+    expect(mirip("MERATUS JAYA", "MERATUS JAYAA")).toBe(true);
   });
 
-  it("case-insensitive & abaikan tanda baca", () => {
-    expect(mirip("pt meratus jaya", "PT. MERATUS JAYA")).toBe(true);
+  it("2. beda prefiks panjang (jarak edit besar) tidak mirip", () => {
+    expect(mirip("PELABUHAN TANJUNG PERAK", "KAWASAN TANJUNG PERAK")).toBe(false);
+  });
+
+  it("3. typo 1 karakter di tengah nama", () => {
+    expect(mirip("SINAR MAS", "SINAR MASA")).toBe(true);
+  });
+
+  it("4. substring: nama panjang mengandung nama pendek (>= 4 char)", () => {
+    expect(mirip("SUMBER JAYA", "SUMBER JAYA MAKMUR")).toBe(true);
+  });
+
+  it("5. huruf hilang satu (varian ejaan) dianggap mirip", () => {
+    expect(mirip("SAMUDERA INDONESIA", "SAMUDRA INDONESIA")).toBe(true);
+  });
+
+  it("6. substring pendek + typo: MERAK vs MERAKS mirip", () => {
+    expect(mirip("MERAK", "MERAKS")).toBe(true);
+  });
+
+  it("7. nama 4 char mengandung (batas minimum aturan a)", () => {
+    expect(mirip("ABCD", "ABCDX")).toBe(true);
+  });
+
+  it("8. varian panjang: MERATUS JAYA vs MERATUS JAYA ABADI mirip", () => {
+    expect(mirip("MERATUS JAYA ABADI", "MERATUS JAYA")).toBe(true);
+  });
+
+  it("9. kasus MATEREE: nama pendek yang termuat nama panjang dianggap mirip", () => {
+    expect(mirip("MATEREE", "PT. MATEREE NUSANTARA UTAMA")).toBe(true);
+    expect(mirip("MATEREE", "MATEREE NUSANTARA UTAMA")).toBe(true);
+    expect(mirip("MATEREE NUSANTARA UTAMA", "PT. MATEREE NUSANTARA UTAMA")).toBe(true);
+  });
+
+  it("10. typo singkat: MATEREE vs MATEREE JAYA mirip", () => {
+    expect(mirip("MATEREE", "MATEREE JAYA")).toBe(true);
+  });
+
+  it("11. nama 2 char tidak memicu substring: AB vs ABAD tidak mirip", () => {
+    expect(mirip("AB", "ABAD")).toBe(false);
+  });
+
+  it("string kosong tidak pernah mirip", () => {
+    expect(mirip("", "APA SAJA")).toBe(false);
+    expect(mirip("APA SAJA", "")).toBe(false);
   });
 });
 

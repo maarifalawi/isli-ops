@@ -1,5 +1,5 @@
 /*
- * Deteksi kemiripan nama untuk master data (RENCANA-IRISAN-3-CRUD §3.1, §9).
+ * Deteksi kemiripan nama untuk master data (RENCANA-IRISAN-3-CRUD §7, §9).
  *
  * Fungsi: memberi peringatan dini saat user mengetik nama yang mirip dengan
  * baris aktif lain (typo / dobel entri). Hanya WARNING yang bisa
@@ -7,27 +7,33 @@
  * - customers/vendors: kode unik case-insensitive (exact),
  * - ports/ship_lines: nama kembar persis setelah normalisasi.
  *
- * Aturan main (RENCANA §3.1):
- * - Perbandingan case-insensitive; spasi ekstra & tanda baca diabaikan.
- * - mirip(a, b) = TRUE bila similaritas(normalisasi(a), normalisasi(b)) >= 0.85.
- * - Ambang bisa disetel lewat OPEN-QUESTIONS.md bila klien minta lain.
- *
- * Algoritma: Levenshtein jarak-edit klasik, similaritas = 1 - jarak/panjangMax.
+ * Aturan mirip(a, b) per RENCANA §7 — dihitung setelah normalisasi
+ * (UPPERCASE, trim, kolaps spasi):
+ * (a) salah satu nama MENGANDUNG nama lain sebagai substring DAN nama yang
+ *     lebih pendek panjangnya >= 4 karakter, ATAU
+ * (b) jarak Levenshtein <= 2 untuk nama >= 5 karakter.
  */
 
-/** Ambang similaritas (0..1); >= nilai ini dianggap mirip. RENCANA §3.1. */
+/** Panjang minimum sisi pendek pada aturan mengandung (RENCANA §7a). */
+export const MIN_PANJANG_MENGANDUNG = 4;
+/** Jarak Levenshtein maksimum pada aturan typo (RENCANA §7b). */
+export const MAKS_JARAK_LEVENSHTEIN = 2;
+/** Panjang minimum nama (sisi panjang) untuk aturan Levenshtein (RENCANA §7b). */
+export const MIN_PANJANG_LEVENSHTEIN = 5;
+
+/**
+ * @deprecated Tidak dipakai lagi oleh mirip() sejak aturan §7 berlaku.
+ * Dipertahankan agar import lama (mis. test integrasi) tidak pecah.
+ */
 export const AMBANG_MIRIP = 0.85;
 
 /**
- * Normalisasi teks untuk perbandingan: huruf kecil, semua karakter
- * non-alfanumerik jadi satu spasi, spasi dipadatkan, ujung dipangkas.
- * "KM.  Meratus " -> "km meratus"
+ * Normalisasi teks untuk perbandingan sesuai RENCANA §7:
+ * huruf besar semua, spasi dikolaps jadi satu, ujung dipangkas.
+ * " pt.  meratus  jaya " -> "PT. MERATUS JAYA"
  */
 export function normalisasiTeks(teks: string): string {
-  return teks
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, " ")
-    .trim();
+  return teks.toUpperCase().replace(/\s+/g, " ").trim();
 }
 
 /** Jarak edit Levenshtein (jumlah sisip/hapus/ganti minimum). */
@@ -56,38 +62,61 @@ export function jarakLevenshtein(a: string, b: string): number {
 }
 
 /**
- * Similaritas 0..1 dari dua string (dihitung pada teks TER-NORMALISASI).
- * Dua string kosong dianggap identik (1). Pemanggil tidak perlu
- * menormalisasi sendiri — fungsi ini yang melakukannya.
+ * Normalisasi internal untuk skor similaritas (huruf kecil, semua karakter
+ * non-alfanumerik jadi satu spasi). Hanya untuk pengurutan skor kandidat;
+ * TIDAK dipakai oleh mirip() — mirip() pakai normalisasiTeks (§7).
+ */
+function normalisasiUntukSkor(teks: string): string {
+  return teks.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/**
+ * Similaritas 0..1 dari dua string (untuk skor/urut kandidat).
+ * Dua string kosong dianggap identik (1).
  */
 export function similaritasLevenshtein(a: string, b: string): number {
-  const na = normalisasiTeks(a);
-  const nb = normalisasiTeks(b);
+  const na = normalisasiUntukSkor(a);
+  const nb = normalisasiUntukSkor(b);
   if (na.length === 0 && nb.length === 0) return 1;
   const panjangMax = Math.max(na.length, nb.length);
   return 1 - jarakLevenshtein(na, nb) / panjangMax;
 }
 
 /**
- * Apakah dua teks "mirip" (>= AMBANG_MIRIP setelah normalisasi)?
+ * Apakah dua nama "mirip" menurut RENCANA §7:
+ * (a) salah satu mengandung yang lain (sisi pendek >= 4 karakter), ATAU
+ * (b) jarak Levenshtein <= 2 untuk nama >= 5 karakter.
  * Dipakai server action untuk menyalakan peringatan kemiripan.
  */
-export function mirip(a: string, b: string, ambang: number = AMBANG_MIRIP): boolean {
-  return similaritasLevenshtein(a, b) >= ambang;
+export function mirip(a: string, b: string): boolean {
+  const na = normalisasiTeks(a);
+  const nb = normalisasiTeks(b);
+  if (na.length === 0 || nb.length === 0) return false;
+
+  const pendek = na.length <= nb.length ? na : nb;
+  const panjang = na.length > nb.length ? na : nb;
+
+  // Aturan (a): mengandung, sisi pendek minimal 4 karakter.
+  if (pendek.length >= MIN_PANJANG_MENGANDUNG && panjang.includes(pendek)) return true;
+
+  // Aturan (b): typo dekat (Levenshtein <= 2) untuk nama >= 5 karakter.
+  if (panjang.length >= MIN_PANJANG_LEVENSHTEIN && jarakLevenshtein(na, nb) <= MAKS_JARAK_LEVENSHTEIN) return true;
+
+  return false;
 }
 
 /** Satu kandidat duplikat yang ditemukan di antara baris aktif. */
 export interface KandidatMirip {
   id: string;
   nama: string;
-  /** similaritas 0..1 terhadap input user. */
+  /** similaritas 0..1 terhadap input user (hanya untuk urut skor). */
   skor: number;
 }
 
 /**
  * Cari kandidat duplikat untuk sebuah input nama di antara baris aktif.
  *
- * - Kandidat: baris yang mirip(input) == true.
+ * - Kandidat: baris yang mirip(input) == true (aturan RENCANA §7).
  * - Bila idKecuali diberikan, baris dengan id itu dilewati (mode EDIT:
  *   jangan bandingkan baris dengan dirinya sendiri).
  * - Hasil diurutkan skor menurun, maksimum `maks` kandidat.
