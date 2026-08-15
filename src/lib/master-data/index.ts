@@ -456,6 +456,70 @@ export interface ChargeCodeInput {
 }
 
 /**
+ * CREATE charge code. `kode` PK TEXT: dinormalisasi uppercase+trim, WAJIB
+ * unik (duplikat ditolak). kategori default OPSIONAL; segmentScope
+ * divalidasi terhadap enum — nilai lain ditolak (RENCANA §6).
+ */
+export async function buatChargeCode(
+  dbOrTx: DbOrTx,
+  user: PelaksanaMaster,
+  input: ChargeCodeInput & { kode: string },
+): Promise<HasilMaster<{ kode: string }>> {
+  const tolak = cekWewenang(user.role);
+  if (tolak) return tolak;
+  const kode = teks(input.kode)?.toUpperCase();
+  if (!kode) return gagal("Kode biaya wajib diisi.");
+  const keterangan = teks(input.keterangan);
+  if (!keterangan) return gagal("Keterangan kode biaya wajib diisi.");
+  if (input.category && !CHARGE_CATEGORIES.includes(input.category as never)) {
+    return gagal(
+      `Kategori tidak dikenal. Pilih salah satu: ${CHARGE_CATEGORIES.join(", ")}.`,
+    );
+  }
+  if (input.segmentScope && !SEGMENT_SCOPES.includes(input.segmentScope)) {
+    return gagal("Segment scope harus DOM, EXIM, atau BOTH.");
+  }
+  if (input.defaultLeg != null && ![1, 2, 3].includes(input.defaultLeg)) {
+    return gagal("Leg default harus 1, 2, 3, atau kosong.");
+  }
+
+  return dbOrTx.transaction(async (tx) => {
+    const dup = await tx
+      .select({ kode: chargeCodes.kode })
+      .from(chargeCodes)
+      .where(eq(chargeCodes.kode, kode));
+    if (dup.length > 0) return gagal(`Kode "${kode}" sudah dipakai.`);
+
+    const [baris] = await tx
+      .insert(chargeCodes)
+      .values({
+        kode,
+        keterangan,
+        nameId: teks(input.nameId),
+        category: teks(input.category),
+        defaultLeg: input.defaultLeg ?? null,
+        kategori: input.kategori ?? "OPSIONAL",
+        segmentScope: input.segmentScope ?? "BOTH",
+        defaultReimburse: input.defaultReimburse ?? false,
+        isAtCostDefault: input.isAtCostDefault ?? false,
+        isTaxable: input.isTaxable ?? true,
+        pph23Applicable: input.pph23Applicable ?? false,
+        butuhVendor: input.butuhVendor ?? true,
+      })
+      .returning();
+    await writeAudit(tx, {
+      userId: user.id,
+      aksi: "CREATE",
+      entitas: "CHARGE_CODE",
+      entitasId: null, // PK TEXT; kode terekam di JSON sesudah
+      sesudah: baris,
+      alasan: `CREATE kode ${kode}`,
+    });
+    return { ok: true, data: { kode: baris?.kode ?? kode } };
+  });
+}
+
+/**
  * EDIT charge code. `kode` IMMUTABLE: bila input.kode berbeda dari baris
  * yang dituju, DITOLAK di server — jangan percaya UI saja (RENCANA §6).
  */

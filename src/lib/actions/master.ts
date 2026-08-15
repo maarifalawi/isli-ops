@@ -16,6 +16,7 @@
 
 import { db } from "@/db/index";
 import {
+  buatChargeCode,
   buatCustomer,
   buatPort,
   buatShipLine,
@@ -157,6 +158,31 @@ export async function actionUbahShipLine(fd: FormData): Promise<HasilAction> {
 }
 
 // ── CHARGE CODE ───────────────────────────────────────────────────────────────
+
+export async function actionBuatChargeCode(fd: FormData): Promise<HasilAction> {
+  const user = await requireUser();
+  const hasil = await buatChargeCode(db, user, {
+    kode: String(fd.get("kode") ?? ""),
+    keterangan: String(fd.get("keterangan") ?? ""),
+    nameId: String(fd.get("nameId") ?? ""),
+    category: String(fd.get("category") ?? ""),
+    defaultLeg: angka(fd.get("defaultLeg")),
+    // kategori: checkbox "kategoriFixed" eksplisit — TANPA checkbox, kode
+    // baru otomatis OPSIONAL (RENCANA §6; jangan tercentang default).
+    kategori: bool(fd.get("kategoriFixed")) ? "FIXED" : "OPSIONAL",
+    segmentScope: (String(fd.get("segmentScope") || "BOTH") || "BOTH") as
+      | "DOM"
+      | "EXIM"
+      | "BOTH",
+    defaultReimburse: bool(fd.get("defaultReimburse")),
+    isAtCostDefault: bool(fd.get("isAtCostDefault")),
+    isTaxable: bool(fd.get("isTaxable")),
+    pph23Applicable: bool(fd.get("pph23Applicable")),
+    butuhVendor: bool(fd.get("butuhVendor")),
+  });
+  if (hasil.ok) revalidatePath("/master/charge-codes");
+  return hasil;
+}
 
 export async function actionUbahChargeCode(fd: FormData): Promise<HasilAction> {
   const user = await requireUser();
