@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import {
   MAKS_JARAK_LEVENSHTEIN,
   MIN_PANJANG_LEVENSHTEIN,
@@ -9,6 +8,7 @@ import {
   normalisasiTeks,
   similaritasLevenshtein,
 } from "@/lib/similarity/index";
+import { describe, expect, it } from "vitest";
 
 describe("normalisasiTeks (RENCANA §7: UPPERCASE + kolaps spasi + trim)", () => {
   it("huruf besar semua, spasi dipadatkan, ujung dipangkas; tanda baca dibiarkan", () => {
@@ -98,6 +98,24 @@ describe("mirip (RENCANA §7: mengandung min-4 ATAU lev<=2 utk nama>=5)", () => 
   });
 });
 
+describe("lima kasus wajib RENCANA §7 (literal)", () => {
+  it("1. MATEREE ↔ MATEREE NUSANTARA mirip (mengandung)", () => {
+    expect(mirip("MATEREE", "MATEREE NUSANTARA")).toBe(true);
+  });
+  it("2. PT MATREE ↔ PT MATEREE mirip (typo jarak 1)", () => {
+    expect(mirip("PT MATREE", "PT MATEREE")).toBe(true);
+  });
+  it("3. PT MATREE ↔ MATREE INDONESIA mirip (mengandung)", () => {
+    expect(mirip("PT MATREE", "MATREE INDONESIA")).toBe(true);
+  });
+  it("4. MERATUS ↔ MERATAS mirip (jarak 1)", () => {
+    expect(mirip("MERATUS", "MERATAS")).toBe(true);
+  });
+  it("5. SPIL ↔ TEMAS tidak mirip", () => {
+    expect(mirip("SPIL", "TEMAS")).toBe(false);
+  });
+});
+
 describe("cariKandidatMirip", () => {
   const baris = [
     { id: "1", nama: "PT Meratus Jaya" },
@@ -110,7 +128,9 @@ describe("cariKandidatMirip", () => {
     expect(hasil.length).toBeGreaterThan(0);
     expect(hasil[0]?.id).toBe("1");
     for (let i = 1; i < hasil.length; i++) {
-      expect(hasil[i - 1]!.skor).toBeGreaterThanOrEqual(hasil[i]!.skor);
+      expect(hasil[i - 1]?.skor ?? Number.NaN).toBeGreaterThanOrEqual(
+        hasil[i]?.skor ?? Number.NaN,
+      );
     }
   });
 

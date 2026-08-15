@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it, vi } from "vitest";
 import { writeAudit } from "@/lib/audit/index";
+import { describe, expect, it, vi } from "vitest";
 
 /** Fake tx: cukup punya insert().values(), persis potongan yang dipakai helper. */
 function fakeTx() {
@@ -58,7 +58,10 @@ describe("writeAudit", () => {
       sesudah: { nama: "KM Contoh" },
     });
     expect(values).toHaveBeenCalledWith(
-      expect.objectContaining({ sebelum: null, sesudah: JSON.stringify({ nama: "KM Contoh" }) }),
+      expect.objectContaining({
+        sebelum: null,
+        sesudah: JSON.stringify({ nama: "KM Contoh" }),
+      }),
     );
   });
 
@@ -87,7 +90,9 @@ describe("writeAudit", () => {
       sesudah: { nama: "PT X" },
       alasan: "Sudah tidak dipakai",
     });
-    expect(values).toHaveBeenCalledWith(expect.objectContaining({ alasan: "Sudah tidak dipakai" }));
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({ alasan: "Sudah tidak dipakai" }),
+    );
   });
 });
 
@@ -111,7 +116,10 @@ describe("append-only audit_log", () => {
     const pelanggaran: string[] = [];
     for (const file of daftarFileTs("src")) {
       const isi = readFileSync(file, "utf8");
-      if (/(?:update|delete)\(\s*auditLog\s*\)/.test(isi) || /\.from\(auditLog\)\s*[\s\S]{0,80}\.(?:update|delete)\(/.test(isi)) {
+      if (
+        /(?:update|delete)\(\s*auditLog\s*\)/.test(isi) ||
+        /\.from\(auditLog\)\s*[\s\S]{0,80}\.(?:update|delete)\(/.test(isi)
+      ) {
         pelanggaran.push(file);
       }
     }

@@ -40,12 +40,8 @@ const shipLineIds: string[] = [];
 
 async function hapusAuditMilikSendiri() {
   // Baris audit test dikenali dari JSON sesudah / alasan yang memuat prefix.
-  await db
-    .delete(auditLog)
-    .where(like(auditLog.sesudah, `%${PREFIX.trim()}%`));
-  await db
-    .delete(auditLog)
-    .where(like(auditLog.sesudah, `%${KODE_CC}%`));
+  await db.delete(auditLog).where(like(auditLog.sesudah, `%${PREFIX.trim()}%`));
+  await db.delete(auditLog).where(like(auditLog.sesudah, `%${KODE_CC}%`));
 }
 
 describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
@@ -68,8 +64,7 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
     await db.delete(chargeCodes).where(eq(chargeCodes.kode, KODE_CC));
     if (customerIds.length)
       await db.delete(customers).where(inArray(customers.id, customerIds));
-    if (vendorIds.length)
-      await db.delete(vendors).where(inArray(vendors.id, vendorIds));
+    if (vendorIds.length) await db.delete(vendors).where(inArray(vendors.id, vendorIds));
     if (portIds.length) await db.delete(ports).where(inArray(ports.id, portIds));
     if (shipLineIds.length)
       await db.delete(shipLines).where(inArray(shipLines.id, shipLineIds));
@@ -77,7 +72,20 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
   });
 
   const owner = () => ({ id: userId, role: "OWNER" as const });
+  const manager = () => ({ id: userId, role: "MANAGER" as const });
   const staff = () => ({ id: userId, role: "STAFF" as const });
+
+  it("MANAGER diizinkan buat & edit master data (RENCANA §9.2)", async () => {
+    const buat = await buatCustomer(db, manager(), { nama: `${PREFIX}Manager Bisa` });
+    expect(buat.ok).toBe(true);
+    if (!buat.ok) return;
+    customerIds.push(buat.data.id);
+
+    const ubah = await ubahCustomer(db, manager(), buat.data.id, {
+      nama: `${PREFIX}Manager Bisa Edit`,
+    });
+    expect(ubah.ok).toBe(true);
+  });
 
   it("STAFF ditolak: tidak ada baris baru, tidak ada audit", async () => {
     const hasil = await buatCustomer(db, staff(), { nama: `${PREFIX}Ditolak` });
@@ -125,9 +133,15 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
   });
 
   it("EDIT customer → audit EDIT dengan sebelum & sesudah berbeda", async () => {
-    const id = customerIds[0];
-    if (!id) throw new Error("customer pertama belum terbuat");
-    const hasil = await ubahCustomer(db, owner(), id, {
+    // Buat customer khusus test ini supaya jumlah audit EDIT pasti 1.
+    const buat = await buatCustomer(db, owner(), {
+      nama: `${PREFIX}Samudera Jaya`,
+    });
+    expect(buat.ok).toBe(true);
+    if (!buat.ok) return;
+    customerIds.push(buat.data.id);
+
+    const hasil = await ubahCustomer(db, owner(), buat.data.id, {
       nama: `${PREFIX}Samudera Jaya Raya`,
     });
     expect(hasil.ok).toBe(true);
@@ -138,7 +152,7 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
       .where(
         and(
           eq(auditLog.entitas, "CUSTOMER"),
-          eq(auditLog.entitasId, id),
+          eq(auditLog.entitasId, buat.data.id),
           eq(auditLog.aksi, "EDIT"),
         ),
       );
@@ -227,7 +241,10 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
   });
 
   it("port & ship line: buat + edit + audit", async () => {
-    const p = await buatPort(db, owner(), { kode: "zztst", nama: `${PREFIX}Tanjung Priok` });
+    const p = await buatPort(db, owner(), {
+      kode: "zztst",
+      nama: `${PREFIX}Tanjung Priok`,
+    });
     expect(p.ok).toBe(true);
     if (p.ok) portIds.push(p.data.id);
 
@@ -238,7 +255,9 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
     const auditPort = await db
       .select()
       .from(auditLog)
-      .where(and(eq(auditLog.entitas, "PORT"), eq(auditLog.entitasId, p.ok ? p.data.id : "")));
+      .where(
+        and(eq(auditLog.entitas, "PORT"), eq(auditLog.entitasId, p.ok ? p.data.id : "")),
+      );
     expect(auditPort).toHaveLength(1);
     // kode dinormalisasi jadi uppercase
     expect(auditPort[0]?.sesudah).toContain("ZZTST");
@@ -246,7 +265,12 @@ describe("CRUD master data (integrasi DB)", { timeout: 30_000 }, () => {
     const auditShip = await db
       .select()
       .from(auditLog)
-      .where(and(eq(auditLog.entitas, "SHIP_LINE"), eq(auditLog.entitasId, s.ok ? s.data.id : "")));
+      .where(
+        and(
+          eq(auditLog.entitas, "SHIP_LINE"),
+          eq(auditLog.entitasId, s.ok ? s.data.id : ""),
+        ),
+      );
     expect(auditShip).toHaveLength(1);
   });
 

@@ -43,7 +43,7 @@ export function jarakLevenshtein(a: string, b: string): number {
   if (b.length === 0) return a.length;
 
   // DP satu baris; aman untuk panjang nama master data (puluhan karakter).
-  let baris = Array.from({ length: b.length + 1 }, (_, i) => i);
+  const baris = Array.from({ length: b.length + 1 }, (_, i) => i);
   for (let i = 1; i <= a.length; i++) {
     let kiriAtas = baris[0] as number;
     baris[0] = i;
@@ -67,7 +67,10 @@ export function jarakLevenshtein(a: string, b: string): number {
  * TIDAK dipakai oleh mirip() — mirip() pakai normalisasiTeks (§7).
  */
 function normalisasiUntukSkor(teks: string): string {
-  return teks.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  return teks
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
 /**
@@ -83,14 +86,27 @@ export function similaritasLevenshtein(a: string, b: string): number {
 }
 
 /**
+ * Kupas awalan nama badan usaha di awal string (PT / PT. / CV / UD) beserta
+ * spasi setelahnya — fixture fixtures/customers-raw.csv menyatakan prefiks
+ * entitas seperti "PT", "PT.", "CV", "UD" sebagai noise.
+ * "PT MATREE" -> "MATREE"; "PT. MATEREE JAYA" -> "MATEREE JAYA".
+ * Nama yang memang diawali kata itu TANPA spasi (mis. "PTUN") tidak disentuh.
+ */
+function kupasAwalanEntitas(teks: string): string {
+  return teks.replace(/^(PT\.?|CV\.?|UD\.?)\s+/i, "").trim();
+}
+
+/**
  * Apakah dua nama "mirip" menurut RENCANA §7:
  * (a) salah satu mengandung yang lain (sisi pendek >= 4 karakter), ATAU
  * (b) jarak Levenshtein <= 2 untuk nama >= 5 karakter.
+ * Prefiks entitas (PT/PT./CV/UD) dikupas dulu dari kedua sisi karena noise,
+ * sehingga "PT MATREE" ↔ "MATREE INDONESIA" terdeteksi mengandung.
  * Dipakai server action untuk menyalakan peringatan kemiripan.
  */
 export function mirip(a: string, b: string): boolean {
-  const na = normalisasiTeks(a);
-  const nb = normalisasiTeks(b);
+  const na = kupasAwalanEntitas(normalisasiTeks(a));
+  const nb = kupasAwalanEntitas(normalisasiTeks(b));
   if (na.length === 0 || nb.length === 0) return false;
 
   const pendek = na.length <= nb.length ? na : nb;
@@ -100,7 +116,11 @@ export function mirip(a: string, b: string): boolean {
   if (pendek.length >= MIN_PANJANG_MENGANDUNG && panjang.includes(pendek)) return true;
 
   // Aturan (b): typo dekat (Levenshtein <= 2) untuk nama >= 5 karakter.
-  if (panjang.length >= MIN_PANJANG_LEVENSHTEIN && jarakLevenshtein(na, nb) <= MAKS_JARAK_LEVENSHTEIN) return true;
+  if (
+    panjang.length >= MIN_PANJANG_LEVENSHTEIN &&
+    jarakLevenshtein(na, nb) <= MAKS_JARAK_LEVENSHTEIN
+  )
+    return true;
 
   return false;
 }
