@@ -50,6 +50,41 @@ Catatan implementasi penting:
 
 1. TIDAK ada migrasi baru — skema lengkap di drizzle 0000/0001/0002.
 2. REVOKE `app_role` di 0000 diabaikan (role tidak ada di repo).
-3. audit_log (0001): actor/entity/entity_id/action/payload jsonb/logged_at; writeAudit sudah dipakai iris3-crud-01.
+3. audit_log (0000): id/user_id/aksi/entitas/entitas_id (uuid NULLABLE)/sebelum/sesudah/alasan/created_at; writeAudit sudah dipakai iris3-crud-01.
 4. Test DB: koneksi langsung via `createDb(drizzleDb)` seperti test integrasi job-sequence.
 5. `pnpm verify` = typecheck + biome + test:all.
+
+## Jawaban laporan (diverifikasi 15 Agu 2026 ~18:56 WIB, berbasis kode & uji aktual)
+
+### Q1: "MATEREE" bisa match "PT. MATEREE NUSANTARA UTAMA"?
+
+TIDAK otomatis — tapi skornya jauh lebih rendah dari ambang, jadi aman:
+uji aktual `tests/unit/similarity-materee.test.ts` (npx vitest, hijau):
+
+- A="MATEREE" vs B="MATEREE NUSANTARA UTAMA" → similaritas 7/23 ≈ **0,30** → mirip=false
+- A vs C="PT. MATEREE NUSANTARA UTAMA" → 7/26 ≈ **0,27** → mirip=false
+- B vs C → 23/26 ≈ **0,88** → mirip=**true**
+
+Algoritma final `src/lib/similarity/index.ts` (commit 7c5a2ab):
+`similaritasLevenshtein(a,b) = (max(len) − lev(a,b)) / max(len)` atas string
+ternormalisasi (huruf kecil, di-trim, non-huruf-angka → spasi, spasi ganda
+dirapatkan). `mirip()` = skor ≥ **AMBANG_SIMILARITAS = 0,85**.
+Implikasi UI: input "MATEREE" tidak memblokir/memunculkan "MATEREE NUSANTARA
+UTAMA" sebagai duplikat (0,30/0,27 < 0,85), tetapi variasi seperti "PT MATEREE
+NUSANTARA UTAMA" vs "PT. MATEREE NUSANTARA UTAMA" (hanya beda titik) akan
+terdeteksi mirip. Jika bisnis ingin nama-pendek ("MATEREE") ikut dianggap sama,
+itu KEBIJAKAN baru: perlu tambahan pengecekan `includes`/substring — jangan
+ubah ambang tanpa keputusan eksplisit.
+
+### Q2: Kolom entitas_id di audit_log
+
+Kolom `entitas_id` di tabel `audit_log` bertipe `uuid` dan **NULLABLE**
+(DDL 0000: `"entitas_id" uuid,` — tanpa NOT NULL; ada `idx_audit_entitas`
+pada `(entitas, entitas_id)`). Ini disengaja karena 4 entitas (customers,
+vendors, ports, ship_lines) PK-nya uuid, sedangkan charge_codes PK-nya TEXT
+(kode). Konvensi `writeAudit` (src/lib/audit/index.ts, commit bb7baad):
+- PK uuid → `entitasId` diisi uuid baris.
+- CHARGE_CODE → `entitasId: null`; kodenya tetap terekam di JSON
+  `sebelum`/`sesudah` dan field `alasan`.
+Jadi `entitas_id` boleh null hanya untuk entitas CHARGE_CODE; selain itu wajib
+terisi. Jangan tambah migrasi NOT NULL — akan merusak charge_codes.
