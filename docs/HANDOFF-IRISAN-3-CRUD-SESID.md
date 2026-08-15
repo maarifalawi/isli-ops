@@ -1,34 +1,58 @@
-# HANDOFF IRISAN 3 CRUD — SESI D (STATUS AKURAT, DITIMPA)
+# HANDOFF IRISAN 3 CRUD — SESI E (STATUS AKURAT, DITIMPA)
 
-> File ini DITIMPA di sesi D. Versi sebelumnya berisi laporan SESI C yang
-> hanya di-rename — jangan percaya isi lama itu.
+> File ini DITIMPA setelah sesi D2. Strategi baru dari user: SATU sesi =
+> SATU halaman, paling sederhana dulu. Setelah hijau + commit, BERHENTI.
 
-## Status sesi D (jujur)
+## Status terkini (jujur)
 
-**BELUM ADA satu pun halaman /master/\* yang dibangun/commit di sesi D.**
-Sesi D (percobaan pertama) habis konteks sebelum menulis file apa pun;
-sesi D (percobaan kedua) hanya sempat: verifikasi keadaan, membaca ulang
-semua kontrak, lalu berhenti lagi karena konteks penuh sebelum halaman
-pertama ditulis. Tidak ada gate (tsc/vitest/biome) yang dijalankan untuk
-halaman apa pun — karena memang belum ada halaman.
+**Halaman `/master/ports` SELESAI, hijau, ter-commit: `5191997`
+`feat(master-ports): halaman CRUD /master/ports - Irisan 3 sesi D2`.**
 
-## Fakta yang TERVERIFIKASI di sesi D (boleh dipakai sesi E)
+Hasil gate LITERAL untuk ports (semua hijau):
+- `npx tsc --noEmit` → exit 0, tanpa output error.
+- `npx vitest run` → `Test Files 40 passed (40)`, `Tests 135 passed (135)`.
+- `npx @biomejs/biome check src/app/master/ports src/components/master`
+  → 0 errors, 0 warnings (format via `biome check --write`).
 
-1. **Tidak ada draft rusak**: `src/app/master/` TIDAK ADA di tree (dicek
-   dengan Get-ChildItem). Tidak ada sisa impor `./actions` yang salah.
-2. **HEAD git**: `def09de feat(actions): server actions master data ...`
-   (SS4). Di working tree ada: rename ter-staged
-   `HANDOFF-IRISAN-3-CRUD-SESIC.md -> ...SESID.md` dan perubahan
-   BELUM-STAGED `src/app/layout.tsx` (asal sesi sebelumnya; sesi D tidak
-   menyentuhnya).
-3. **Server actions PERSIS** (`src/lib/actions/master.ts`, semua menerima
+Ikut ter-commit di `5191997` (sudah terverifikasi hijau bersama ports):
+- `src/app/layout.tsx`: nav link "Master Data" → `/master` + label header
+  "Irisan 3 · CRUD master" (sisa kerja sesi sebelumnya yang belum commit).
+- `src/lib/actions/master.ts`: hanya urut ulang impor (biome organize),
+  tanpa perubahan logika.
+- `src/components/master/primitives.tsx`: fix format biome.
+
+## Yang dibangun untuk ports
+
+- `src/app/master/ports/page.tsx` (server component): `requireUser()` +
+  `daftarPort(db)`; tabel 4 kolom (Kode, Nama, Negara, Aksi); pill
+  "Tambah Port" membuka dialog; pill "Ubah" di tiap baris berupa link
+  `?edit=<id>`; BarisKosong bila daftar kosong.
+- `src/app/master/ports/form.tsx` (`"use client"`): `useActionState`
+  membungkus `actionBuatPort` / `actionUbahPort`; field kode, nama*,
+  negara (default "ID"); kode & nama `required`; PesanHasil sukses/error;
+  PeringatanMirip bila `miripDengan` dikembalikan; dialog edit dipicu
+  `searchParams.edit`.
+- TANPA tombol/form nonaktifkan — sesuai RENCANA §6: ports & ship-lines
+  tidak punya konsep aktif/nonaktif di UI (kolom `aktif` ada di DB tapi
+  tidak ditampilkan/dikelola).
+
+## Urutan pengerjaan sisa (dari user, sesi E dst)
+
+ship-lines → vendors → customers → charge-codes → hub `/master/page.tsx`
+(paling akhir). Satu sesi SATU halaman; tiap halaman wajib gate
+`tsc --noEmit` + `vitest run` + `biome check <file>` hijau, lalu commit,
+lalu timpa file ini dengan status akurat, lalu BERHENTI.
+
+## Fakta yang TERVERIFIKASI (dipakai ulang tiap sesi — tidak perlu dicek lagi)
+
+1. **Server actions PERSIS** (`src/lib/actions/master.ts`, semua menerima
    `FormData`, mengembalikan `Promise<HasilAction>`):
    - `actionBuatCustomer`, `actionUbahCustomer` (field FormData: id*,
      nama, legalName, npwp, alamat, topHari, pph23Default[checkbox]);
      `actionStatusCustomer`
    - `actionBuatVendor`, `actionUbahVendor` (+ vendorType, paymentTerm,
      paymentTermDays); `actionStatusVendor`
-   - `actionBuatPort`, `actionUbahPort` (kode, nama, negara)
+   - `actionBuatPort`, `actionUbahPort` (kode, nama, negara) — SUDAH DIPAKAI
    - `actionBuatShipLine`, `actionUbahShipLine` (kode, nama)
    - `actionUbahChargeCode` (kode sbg id; keterangan, nameId, category,
      defaultLeg, kategoriFixed[checkbox → FIXED/OPSIONAL], segmentScope
@@ -37,43 +61,45 @@ halaman apa pun — karena memang belum ada halaman.
    - Status action membaca `id`, `aktifBaru` ("true"/"false"), `alasan`.
    - `HasilAction = { ok:true; miripDengan?: {id,nama,skor}[] } |
      { ok:false; error:string }`.
-4. **daftar\*** di `src/lib/master-data/index.ts` (semua hanya perlu
+2. **daftar\*** di `src/lib/master-data/index.ts` (semua hanya perlu
    `dbOrTx`, urut abadi): `daftarCustomer` (by nama), `daftarVendor`
-   (by nama), `daftarPort` (by nama), `daftarShipLine` (by nama),
-   `daftarChargeCode` (by kode).
-5. **Kolom DB** (dari 0000 + 0002):
+   (by nama), `daftarPort` (by nama) — SUDAH DIPAKAI, `daftarShipLine`
+   (by nama), `daftarChargeCode` (by kode).
+3. **Kolom DB** (dari 0000 + 0002):
    - customers: id, nama, legal_name, npwp, alamat, top_hari,
      pph23_default, aktif
    - vendors: id, nama, legal_name, npwp, vendor_type, payment_term,
      payment_term_days, pph23_default, aktif
-   - ports: id, kode (nullable, unique), nama, negara (default 'ID'),
-     aktif (ada di DB tetapi TIDAK ditampilkan/dikelola — RENCANA §6)
-   - ship_lines: id, kode (nullable, unique), nama, aktif (sama: tidak
-     ditampilkan)
+   - ship_lines: id, kode (nullable, unique), nama, aktif (tidak
+     ditampilkan/dikelola — pola sama dengan ports)
    - charge_codes: kode (immutable), keterangan, name_id, category
      (nullable), default_leg, kategori (FIXED|OPSIONAL), segment_scope
      (DOM|EXIM|BOTH), default_reimburse, is_at_cost_default, is_taxable,
      pph23_applicable, butuh_vendor, aktif
-6. **Token desain tersedia** di tailwind.config: canvas, parchment, pearl,
-   ink/ink-80/ink-48, hairline, divider, accent/accent-focus/accent-dark;
-   tanpa shadow.
-7. **Komponen siap pakai** `src/components/master/primitives.tsx`:
+4. **Komponen siap pakai** `src/components/master/primitives.tsx`:
    PageHeader, DataTable/Kolom, BarisKosong, FormDialog (+Field, Input,
    Checkbox, Select, TextArea), PillButton, PesanHasil, PeringatanMirip,
-   BadgeStatus, requiredMark, kls.
+   BadgeStatus, requiredMark, kls. Token desain: canvas, ink/ink-80/ink-48,
+   hairline, divider, accent/accent-focus/accent-dark; tanpa shadow.
 
-## Instruksi SESI E (lanjutkan dari sini)
+## Pola halaman untuk sesi berikutnya (contoh konkret: tiru ports)
 
-1. Bangun SATU PER SATU: customers → vendors → ports → ship-lines →
-   charge-codes → hub `/master/page.tsx`. Tiap halaman:
-   `pnpm tsc --noEmit` + `pnpm vitest run` + `pnpm biome check <file>`
-   bersih → `git add` file halaman → commit → lanjut. Jangan menumpuk.
-2. Pola halaman (SS4 §10.4): server component async memanggil `daftar*`
-   langsung; form create/edit = client component dengan `useActionState`
-   membungkus action di atas; dialog edit dipicu searchParams
-   (`?edit=<id>`); nonaktifkan hanya untuk customer/vendor/charge code,
-   dengan form alasan wajib; ports & ship-lines TANPA tombol status.
-3. Setelah 6 halaman ter-commit, TIMPA file ini lagi dengan hasil gate
-   literal per halaman.
-4. Keputusan desain yang masih terbuka (dari PLAN-SESSION) dan belum
-   terjawab: tidak ada — SS4 menjawab semuanya; langsung eksekusi.
+1. Server component `page.tsx`: `requireUser()` dari
+   `@/lib/session/index`, `daftarX(db)` dari `@/lib/master-data/index`,
+   render DataTable; dialog tambah + `searchParams.edit` → dialog edit
+   dengan `form.tsx`.
+2. Client component `form.tsx`: `"use client"`; props `mode:
+   "buat" | "ubah"` + `awal?` + `onTutup`; `useActionState(action,
+   stateAwal)`; submit → bila `res.ok`, `router.refresh()`; tombol batal
+   menutup dialog (`router.push("/master/<halaman>")` saat mode edit).
+3. Gate: `npx tsc --noEmit`; `npx vitest run`;
+   `npx @biomejs/biome check <file-baru> --write` lalu cek ulang.
+4. `git add <file-baru>` → commit dengan pesan
+   `feat(master-<halaman>): halaman CRUD /master/<halaman> - Irisan 3`.
+5. Timpa file ini dengan status akurat, commit docs terpisah, BERHENTI.
+
+## Catatan teknis
+
+- PowerShell: jangan pakai `&&`; pakai `;` antar perintah.
+- Output `npx vitest run` kadang terpotong di terminal; pastikan baris
+  `Test Files ... passed` dan `Tests ... passed` serta `EXIT:0`.
