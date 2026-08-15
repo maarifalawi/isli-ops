@@ -74,3 +74,8 @@ GRAPH_REPORT.md
 
 # Berkas sumber klien yang besar TIDAK diabaikan — itu sumber kebenaran.
 # docs/source-of-truth/ sengaja dilacak.
+
+# Scratch temporer agen/sesi — JANGAN pernah masuk commit
+tmp-*
+verify-run*.txt
+grep-approle-result.txt
