@@ -1,5 +1,5 @@
-import { auditLog } from "@/db/schema/index";
 import type { db } from "@/db/index";
+import { auditLog } from "@/db/schema/index";
 
 /*
  * Helper penulisan jejak audit (audit_log).

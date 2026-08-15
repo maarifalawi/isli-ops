@@ -157,7 +157,10 @@ function bacaChargeCodesDariCsv(): Array<typeof chargeCodes.$inferInsert> {
     }
     const leg = sel[iLeg]?.trim();
     const defaultLeg = leg === "" ? null : Number(leg);
-    if (defaultLeg !== null && (Number.isNaN(defaultLeg) || defaultLeg < 1 || defaultLeg > 3)) {
+    if (
+      defaultLeg !== null &&
+      (Number.isNaN(defaultLeg) || defaultLeg < 1 || defaultLeg > 3)
+    ) {
       throw new Error(`default_leg ${kode} tidak valid: ${leg}`);
     }
     // keterangan: kolom terakhir — gabungkan sisa sel kalau ada koma di dalamnya.
@@ -187,9 +190,7 @@ function bacaChargeCodesDariCsv(): Array<typeof chargeCodes.$inferInsert> {
  * Baris kosong dilewati; nilai di-trim. `catatan_verifikasi` sengaja tidak
  * dipetakan ke database karena hanya catatan review manusia (Q25).
  */
-function bacaKodeDariCsv(
-  namaFile: string,
-): Array<{ kode: string; nama: string }> {
+function bacaKodeDariCsv(namaFile: string): Array<{ kode: string; nama: string }> {
   const path = join(process.cwd(), "fixtures", namaFile);
   const teks = readFileSync(path, "utf8");
   const baris = teks
@@ -221,7 +222,12 @@ async function main() {
   const sudahAdaCustomer = await db
     .select({ nama: customers.nama })
     .from(customers)
-    .where(inArray(customers.nama, CUSTOMERS.map((c) => c.nama)));
+    .where(
+      inArray(
+        customers.nama,
+        CUSTOMERS.map((c) => c.nama),
+      ),
+    );
   const setCustomerAda = new Set(sudahAdaCustomer.map((c) => c.nama));
   const customerBaru = CUSTOMERS.filter((c) => !setCustomerAda.has(c.nama));
   if (customerBaru.length > 0) {
@@ -309,8 +315,10 @@ async function main() {
   const total = await db.select({ jumlah: chargeCodes.kode }).from(chargeCodes);
   const totalPorts = await db.select({ jumlah: ports.kode }).from(ports);
   const totalShips = await db.select({ jumlah: shipLines.kode }).from(shipLines);
-  console.log(`✓ Seed selesai. charge_codes di database: ${total.length} baris.`);
-  console.log(`  ports: ${totalPorts.length} baris, ship_lines: ${totalShips.length} baris.`);
+  console.info(`✓ Seed selesai. charge_codes di database: ${total.length} baris.`);
+  console.info(
+    `  ports: ${totalPorts.length} baris, ship_lines: ${totalShips.length} baris.`,
+  );
   await client.end();
 }
 

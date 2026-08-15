@@ -1,13 +1,7 @@
-import {
-  chargeCodes,
-  customers,
-  ports,
-  shipLines,
-  vendors,
-} from "@/db/schema/index";
 import type { db } from "@/db/index";
-import { AuthorizationError, assertCan } from "@/lib/authz/index";
+import { chargeCodes, customers, ports, shipLines, vendors } from "@/db/schema/index";
 import { writeAudit } from "@/lib/audit/index";
+import { AuthorizationError, assertCan } from "@/lib/authz/index";
 import { cariKandidatMirip } from "@/lib/similarity/index";
 import { eq } from "drizzle-orm";
 
@@ -51,9 +45,21 @@ export type HasilMaster<T> =
   | { ok: true; data: T; miripDengan?: { id: string; nama: string; skor: number }[] }
   | { ok: false; error: string };
 
-export const VENDOR_TYPES = ["PELAYARAN", "TRUCKING", "DOORING", "EMKL", "LAINNYA"] as const;
+export const VENDOR_TYPES = [
+  "PELAYARAN",
+  "TRUCKING",
+  "DOORING",
+  "EMKL",
+  "LAINNYA",
+] as const;
 export const PAYMENT_TERMS = ["CASH", "TEMPO"] as const;
-export const CHARGE_CATEGORIES = ["FREIGHT", "TERMINAL", "DARAT", "DOKUMEN", "INTERNAL"] as const;
+export const CHARGE_CATEGORIES = [
+  "FREIGHT",
+  "TERMINAL",
+  "DARAT",
+  "DOKUMEN",
+  "INTERNAL",
+] as const;
 export const CHARGE_KATEGORIS = ["FIXED", "OPSIONAL"] as const;
 export const SEGMENT_SCOPES = ["DOM", "EXIM", "BOTH"] as const;
 
@@ -206,7 +212,9 @@ export async function buatVendor(
   const nama = teks(input.nama);
   if (!nama) return gagal("Nama vendor wajib diisi.");
   if (input.vendorType && !VENDOR_TYPES.includes(input.vendorType as never)) {
-    return gagal(`Jenis vendor tidak dikenal. Pilih salah satu: ${VENDOR_TYPES.join(", ")}.`);
+    return gagal(
+      `Jenis vendor tidak dikenal. Pilih salah satu: ${VENDOR_TYPES.join(", ")}.`,
+    );
   }
   if (input.paymentTerm && !PAYMENT_TERMS.includes(input.paymentTerm as never)) {
     return gagal("Termin pembayaran harus CASH atau TEMPO.");
@@ -253,7 +261,9 @@ export async function ubahVendor(
   const nama = teks(input.nama);
   if (!nama) return gagal("Nama vendor wajib diisi.");
   if (input.vendorType && !VENDOR_TYPES.includes(input.vendorType as never)) {
-    return gagal(`Jenis vendor tidak dikenal. Pilih salah satu: ${VENDOR_TYPES.join(", ")}.`);
+    return gagal(
+      `Jenis vendor tidak dikenal. Pilih salah satu: ${VENDOR_TYPES.join(", ")}.`,
+    );
   }
   if (input.paymentTerm && !PAYMENT_TERMS.includes(input.paymentTerm as never)) {
     return gagal("Termin pembayaran harus CASH atau TEMPO.");
@@ -464,7 +474,9 @@ export async function ubahChargeCode(
     return gagal("Kode biaya tidak boleh diubah (immutable).");
   }
   if (input.category && !CHARGE_CATEGORIES.includes(input.category as never)) {
-    return gagal(`Kategori tidak dikenal. Pilih salah satu: ${CHARGE_CATEGORIES.join(", ")}.`);
+    return gagal(
+      `Kategori tidak dikenal. Pilih salah satu: ${CHARGE_CATEGORIES.join(", ")}.`,
+    );
   }
   if (input.segmentScope && !SEGMENT_SCOPES.includes(input.segmentScope)) {
     return gagal("Segment scope harus DOM, EXIM, atau BOTH.");
@@ -474,7 +486,10 @@ export async function ubahChargeCode(
   }
 
   return dbOrTx.transaction(async (tx) => {
-    const [sebelum] = await tx.select().from(chargeCodes).where(eq(chargeCodes.kode, kode));
+    const [sebelum] = await tx
+      .select()
+      .from(chargeCodes)
+      .where(eq(chargeCodes.kode, kode));
     if (!sebelum) return gagal("Kode biaya tidak ditemukan.");
     const [sesudah] = await tx
       .update(chargeCodes)
