@@ -1,0 +1,12 @@
+code,nama,catatan_verifikasi
+HMM,HMM,OK
+MCC,MCC,OK
+OOCL,OOCL,OK
+PIL,PIL,OK
+SITC,SITC,OK
+SPIL,SPIL,OK
+TEMP,Temp,PERIKSA: placeholder bukan shipping line nyata; Q25
+TMS,TMS,OK
+WHL,WHL,OK
+WHL (YANG MING),WHL (Yang Ming),PERIKSA: singkatan dengan keterangan dalam kurung; normalisasi Q25
+YANG MING,Yang Ming,OK; muncul sebagai 'YANG MING' dan 'YANG MING ' (trailing space) — dedupe whitespace

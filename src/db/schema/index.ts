@@ -105,16 +105,24 @@ export const users = pgTable("users", {
 export const customers = pgTable("customers", {
   id: uuid("id").primaryKey().defaultRandom(),
   nama: text("nama").notNull(),
+  /** Nama badan hukum resmi (ERD: legal_name). Kosong sampai dikonfirmasi manusia. */
+  legalName: text("legal_name"),
   /** NPWP diisi user, bukan diimpor. Boleh kosong sampai dibutuhkan invoice. */
   npwp: text("npwp"),
   alamat: text("alamat"),
-  /** Termin default. Domestik 30, EXIM 14 — bisa ditimpa per job. */
-  topHari: integer("top_hari").notNull().default(30),
   /**
-   * Apakah customer ini memotong PPh 23 atas invoice ISLI.
-   * Diisi manual. Aturannya belum diketahui — lihat pertanyaan A1.
+   * Termin default dalam hari (ERD: default_top_days). NULL sampai manusia
+   * mengisinya — jalur import dilarang menebak. Panduan "domestik 30, EXIM
+   * 14" adalah heuristik wawancara, bukan default yang boleh dipaksakan.
    */
-  pph23Default: boolean("pph23_default").notNull().default(false),
+  topHari: integer("top_hari"),
+  /**
+   * Apakah customer ini memotong PPh 23 atas invoice ISLI (ERD:
+   * is_pph23_withholder). NULL = BELUM DIKETAHUI — Q04 belum dijawab.
+   * JANGAN pernah memperlakukan NULL sebagai false; alur penerbitan
+   * invoice wajib meminta konfirmasi eksplisit bila masih NULL.
+   */
+  pph23Default: boolean("pph23_default"),
   aktif: boolean("aktif").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -122,11 +130,41 @@ export const customers = pgTable("customers", {
 export const vendors = pgTable("vendors", {
   id: uuid("id").primaryKey().defaultRandom(),
   nama: text("nama").notNull(),
+  /** Nama badan hukum resmi (ERD: legal_name). Kosong sampai dikonfirmasi manusia. */
+  legalName: text("legal_name"),
   npwp: text("npwp"),
+  /** PELAYARAN | TRUCKING | DOORING | EMKL | LAINNYA (ERD: vendor_type). Kosong = belum diklasifikasi; jangan menebak. */
+  vendorType: text("vendor_type"),
+  /** CASH | TEMPO (ERD: payment_term). */
+  paymentTerm: text("payment_term"),
+  paymentTermDays: integer("payment_term_days"),
   /** Apakah ISLI memotong PPh 23 saat membayar vendor ini. */
   pph23Default: boolean("pph23_default").notNull().default(false),
   aktif: boolean("aktif").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Pelabuhan (ERD: port) — dipakai job sebagai POL/POD. */
+export const ports = pgTable("ports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kode: text("kode").unique(),
+  nama: text("nama").notNull(),
+  negara: text("negara").notNull().default("ID"),
+  /*
+   * Soft delete Irisan 3 — final: HANYA boolean aktif, tanpa deleted_at,
+   * untuk seluruh tabel master data. Kewajiban simpan 10 tahun: tidak ada
+   * hapus permanen; nonaktifkan lewat aktif=false.
+   */
+  aktif: boolean("aktif").notNull().default(true),
+});
+
+/** Perusahaan pelayaran (ERD: ship_line). */
+export const shipLines = pgTable("ship_lines", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kode: text("kode").unique(),
+  nama: text("nama").notNull(),
+  /** Soft delete Irisan 3 — pola sama dengan ports; lihat komentar di sana. */
+  aktif: boolean("aktif").notNull().default(true),
 });
 
 /**
@@ -135,37 +173,70 @@ export const vendors = pgTable("vendors", {
  * Bukan enum, karena Bu Niken harus bisa menambah kode baru tanpa menunggu
  * developer. Kalau ini enum, tiap kode baru butuh migrasi database dan rilis.
  */
-export const chargeCodes = pgTable("charge_codes", {
-  kode: text("kode").primaryKey(),
-  keterangan: text("keterangan").notNull(),
-  /** Baris reimburse dikecualikan dari DPP saat menghitung pajak. */
-  defaultReimburse: boolean("default_reimburse").notNull().default(false),
-  /*
-   * R15.3 — apakah kode biaya ini WAJIB menyebut vendor.
-   *
-   * Kewajiban vendor tidak sama untuk semua kode. Contoh dari job
-   * ISLI-26.08-005: MATERAI 29.000 dan HANDLING OPS 100.000 tampaknya biaya
-   * internal tanpa vendor, sedangkan OF ICON 9.577.000 jelas punya vendor.
-   *
-   * Default true — lebih aman ketat lalu dilonggarkan daripada sebaliknya.
-   *
-   * ⚠️ Q64 BELUM DIJAWAB: dari 43 kode biaya, mana saja yang boleh tanpa
-   * vendor? Sampai Bu Niken menjawab, semua kode dianggap butuh vendor.
-   */
-  butuhVendor: boolean("butuh_vendor").notNull().default(true),
-  /*
-   * Transkrip 2 (13 Agu 2026): OF, BL, THC, LSS, trucking, dooring, segel
-   * "sudah fix, pasti muncul di setiap job". Biaya seperti uang makan supir,
-   * biaya timbang, additional freight, biaya pindah alamat itu OPSIONAL --
-   * boleh diinput bebas per job, tidak wajib ada.
-   *
-   * Default OPSIONAL (bukan FIXED) -- lebih aman menganggap kode baru sebagai
-   * ad-hoc sampai ada yang menandainya FIXED secara sengaja, daripada diam-diam
-   * mewajibkan kode yang sebenarnya jarang dipakai.
-   */
-  kategori: chargeCodeKategoriEnum("kategori").notNull().default("OPSIONAL"),
-  aktif: boolean("aktif").notNull().default(true),
-});
+export const chargeCodes = pgTable(
+  "charge_codes",
+  {
+    kode: text("kode").primaryKey(),
+    /** Kolom lama sejak migrasi 0000 — DIPERTAHANKAN apa adanya, tidak di-rename (keputusan final Irisan 3). */
+    keterangan: text("keterangan").notNull(),
+    /**
+     * Nama kode biaya (ERD: name_id). Kolom BARU — bukan rename dari keterangan.
+     * Nullable di level DB supaya ADD COLUMN aman pada database yang sudah berisi
+     * 43 kode lama; `pnpm db:seed` selalu mengisi eksplisit dari fixtures.
+     */
+    nameId: text("name_id"),
+    /** Baris reimburse dikecualikan dari DPP saat menghitung pajak. */
+    defaultReimburse: boolean("default_reimburse").notNull().default(false),
+    /*
+     * R15.3 — apakah kode biaya ini WAJIB menyebut vendor.
+     *
+     * Kewajiban vendor tidak sama untuk semua kode. Contoh dari job
+     * ISLI-26.08-005: MATERAI 29.000 dan HANDLING OPS 100.000 tampaknya biaya
+     * internal tanpa vendor, sedangkan OF ICON 9.577.000 jelas punya vendor.
+     *
+     * Default true — lebih aman ketat lalu dilonggarkan daripada sebaliknya.
+     *
+     * ⚠️ Q64 BELUM DIJAWAB: dari 43 kode biaya, mana saja yang boleh tanpa
+     * vendor? Sampai Bu Niken menjawab, semua kode dianggap butuh vendor.
+     */
+    butuhVendor: boolean("butuh_vendor").notNull().default(true),
+    /*
+     * Transkrip 2 (13 Agu 2026): OF, BL, THC, LSS, trucking, dooring, segel
+     * "sudah fix, pasti muncul di setiap job". Biaya seperti uang makan supir,
+     * biaya timbang, additional freight, biaya pindah alamat itu OPSIONAL --
+     * boleh diinput bebas per job, tidak wajib ada.
+     *
+     * Default OPSIONAL (bukan FIXED) -- lebih aman menganggap kode baru sebagai
+     * ad-hoc sampai ada yang menandainya FIXED secara sengaja, daripada diam-diam
+     * mewajibkan kode yang sebenarnya jarang dipakai.
+     */
+    kategori: chargeCodeKategoriEnum("kategori").notNull().default("OPSIONAL"),
+    aktif: boolean("aktif").notNull().default(true),
+    // ── kolom ERD (Irisan 3) ────────────────────────────────────────────────
+    /**
+     * FREIGHT | TERMINAL | DARAT | DOKUMEN | INTERNAL (ERD: category).
+     * NULLABLE (deviasi terdokumentasi dari ERD, keputusan user 2026-08-15):
+     * baris lama yang belum terisi tidak boleh ditebak/backfill; seed mengisi
+     * eksplisit per baris dari fixtures/charge-codes.csv.
+     */
+    category: text("category"),
+    /** Leg default 1|2|3; null bila tidak terikat leg (ERD: default_leg). */
+    defaultLeg: smallint("default_leg"),
+    isTaxable: boolean("is_taxable").notNull().default(true),
+    /** Default reimburse untuk baris kode ini (ERD: is_at_cost_default). */
+    isAtCostDefault: boolean("is_at_cost_default").notNull().default(false),
+    /** JANGAN menebak. UNKNOWN di fixture → false (default ERD). Q76/Q04 belum dijawab. */
+    pph23Applicable: boolean("pph23_applicable").notNull().default(false),
+    /** DOM | EXIM | BOTH (ERD: segment_scope). */
+    segmentScope: text("segment_scope").notNull().default("BOTH"),
+  },
+  () => ({
+    ckSegmentScope: check(
+      "ck_charge_code_segment_scope",
+      sql`"segment_scope" IN ('DOM', 'EXIM', 'BOTH')`,
+    ),
+  }),
+);
 
 // ---------------------------------------------------------------------------
 // Job

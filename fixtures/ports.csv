@@ -1,0 +1,22 @@
+code,nama,catatan_verifikasi
+ACEH,Aceh,OK
+BALI VIA SURABAYA,Bali via Surabaya,PERIKSA: nama mengandung rute via; normalisasi menunggu Q25
+BANJARMASIN,Banjarmasin,OK
+BATAM,Batam,OK
+BELAWAN,Belawan,OK; lihat juga MEDAN (duplikat de facto; normalisasi Q25)
+BITUNG,Bitung,OK
+GORONTALO,Gorontalo,OK
+JAKARTA,Jakarta,OK; lihat juga JKT (duplikat de facto; normalisasi Q25)
+JKT,Jakarta (singkatan),PERIKSA: duplikat de facto dari JAKARTA; jangan ditebak; Q25
+KENDARI,Kendari,OK
+MANILA,Manila,PERIKSA: pelabuhan luar negeri; valid sebagai POL/POD impor/ekspor?
+MEDAN,Medan,PERIKSA: duplikat de facto dari BELAWAN; jangan ditebak; Q25
+PALU,Palu,OK
+PENAGIHAN STORAGE DEMMURAGE,(PENAGIHAN STORAGE DEMMURAGE ),PERIKSA: BUKAN pelabuhan; artefak keterangan yang muncul di kolom pol/pod sumber
+PERAWANG,Perawang,OK
+PONTIANAK,Pontianak,OK
+QD,QD,PERIKSA: singkatan tidak dikenal; jangan ditebak
+SAMARINDA,Samarinda,OK
+SHANGHAI,Shanghai,PERIKSA: pelabuhan luar negeri; valid sebagai POL/POD impor/ekspor?
+SURABAYA,Surabaya,OK
+TJ. PINANG,Tanjung Pinang,OK
