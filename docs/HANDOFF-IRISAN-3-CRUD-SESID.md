@@ -1,110 +1,105 @@
-# HANDOFF IRISAN 3 CRUD — SESI D3 (STATUS AKURAT, DITIMPA)
-
-> File ini DITIMPA setelah sesi D3. Strategi dari user: SATU sesi =
-> SATU halaman, paling sederhana dulu. Setelah hijau + commit, BERHENTI.
+# HANDOFF IRISAN 3 CRUD — SESI D4 (STATUS AKURAT, DITIMPA)
 
 ## Status terkini (jujur)
 
-**Halaman `/master/ship-lines` SELESAI, hijau, ter-commit: `325a7bf`
-`feat(master-ship-lines): halaman CRUD /master/ship-lines - Irisan 3 sesi D3`.**
+**Sesi D4 TIDAK membangun halaman apa pun.** Context window sudah ~91%
+terpakai setelah fase verifikasi (membaca handoff, pola ports/ship-lines,
+skema, actions, DOMAIN-RULES). Memulai menulis vendors pada titik itu
+berisiko meninggalkan halaman setengah jadi tanpa gate/commit — dilarang
+oleh instruksi sesi ("jangan paksakan setengah jadi"). Maka sesi ini
+dipakai untuk VERIFIKASI TOTAL dan hasilnya ditulis di bawah supaya sesi
+berikutnya tinggal menulis dua file per halaman tanpa riset ulang.
 
-Hasil gate LITERAL untuk ship-lines (semua hijau):
-- `pnpm tsc --noEmit` → exit 0, tanpa output error.
-- `pnpm vitest run` → `Test Files  15 passed (15)`,
-  `Tests  163 passed (163)` (termasuk integrasi DB: "port & ship line:
-  buat + edit + audit").
-- `pnpm biome check` → `Checked 59 files in 25ms. No fixes applied.`
-  `Found 8 warnings.` exit 0 — 8 warnings itu PRE-EXISTING di luar
-  ship-lines; kedua file ship-lines sudah diformat `--write` dan bersih
-  dari error.
+**Halaman selesai (sesi sebelumnya):**
+- `/master/ports` — commit `5191997` (sesi D2).
+- `/master/ship-lines` — commit `325a7bf` (sesi D3).
 
-Status halaman sebelumnya: `/master/ports` selesai di commit `5191997`
-(sesi D2).
+**Sisa urutan:** vendors → customers → charge-codes → hub
+`/master/page.tsx` (paling akhir). Satu sesi SATU halaman (vendors dan
+customers sangat mirip — bila context lega boleh dua, vendors dulu sampai
+hijau + commit).
 
-## Yang dibangun untuk ship-lines
+## Fakta TERVERIFIKASI sesi D4 (tidak perlu dicek lagi)
 
-- `src/app/master/ship-lines/page.tsx` (server component): `requireUser()`
-  + `daftarShipLine(db)`; tabel 3 kolom (Kode, Nama, Aksi); pill
-  "Tambah Ship Line" membuka dialog; pill "Ubah" di tiap baris berupa
-  link `?edit=<id>`; BarisKosong bila daftar kosong. Kode boleh kosong
-  (nullable di DB) → dirender "—" bila null.
-- `src/app/master/ship-lines/form.tsx` (`"use client"`): `useActionState`
-  membungkus `actionBuatShipLine` / `actionUbahShipLine`; field kode
-  (opsional), nama* (required); PesanHasil sukses/error; PeringatanMirip
-  bila `miripDengan` dikembalikan; dialog edit dipicu `searchParams.edit`.
-- TANPA tombol/form nonaktifkan — sesuai RENCANA §6: ship-lines (sama
-  seperti ports) tidak punya konsep aktif/nonaktif di UI (kolom `aktif`
-  ada di DB tapi tidak ditampilkan/dikelola).
+### 1. Server actions PERSIS (`src/lib/actions/master.ts`)
+Semua menerima `FormData`, mengembalikan `Promise<HasilAction>`;
+`HasilAction = { ok:true; miripDengan?: {id,nama,skor}[] } | { ok:false; error:string }`.
+- `actionBuatVendor` — baca: nama*, legalName, npwp, vendorType
+  (enum lokal SHIPPING|CONT|TRUCKING|OTHERS), paymentTerm,
+  paymentTermDays, pph23Default (checkbox "on").
+- `actionUbahVendor` — sama + id*.
+- `actionStatusVendor` — baca: id*, aktifBaru ("true"/"false"), alasan.
+- `actionBuatCustomer` — baca: nama*, legalName, npwp, alamat, topHari,
+  pph23Default (checkbox "on").
+- `actionUbahCustomer` — sama + id*.
+- `actionStatusCustomer` — baca: id*, aktifBaru, alasan.
+- (Sudah ada juga: actionBuatPort/UbahPort — DIPAKAI, actionBuatShipLine/
+  UbahShipLine — DIPAKAI, actionUbahChargeCode + actionStatusChargeCode.)
 
-## Urutan pengerjaan sisa (sesi berikutnya)
+### 2. Kolom skema PERSIS (`src/db/schema/index.ts`, verified)
+- vendors: id, nama, legalName, npwp, vendorType (NOT NULL,
+  SHIPPING|CONT|TRUCKING|OTHERS, default SHIPPING), paymentTerm
+  (NOT NULL, default TOP), paymentTermDays (NOT NULL default 30),
+  pph23Default (NOT NULL default false), aktif.
+- customers: id, nama, legalName, npwp, alamat, topHari
+  (NOT NULL default 30), pph23Default (NOT NULL default false), aktif.
+- Return type daftarVendor/daftarCustomer (master-data) = kolom DB
+  kecuali dibuatDiperbarui: { id, nama, legalName, npwp, ...(di atas), aktif }.
 
-vendors → customers → charge-codes → hub `/master/page.tsx` (paling
-akhir). Satu sesi SATU halaman; tiap halaman wajib gate `tsc --noEmit` +
-`vitest run` + `biome check` hijau, lalu commit, lalu timpa file ini
-dengan status akurat, lalu BERHENTI.
+### 3. Kontrak nonaktifkan (`ubahStatusAktif` + `UbahStatusInput`)
+`UbahStatusInput { id: string; aktifBaru: boolean; alasan?: string | null }`.
+**NONAKTIFKAN: alasan WAJIB** — fungsi mengembalikan
+`gagal("Alasan nonaktifkan wajib diisi.")` bila kosong. Reaktivasi
+(AKTIFKAN): alasan opsional. Audit: NONAKTIFKAN/AKTIFKAN (bukan HAPUS).
+→ UI vendors/customers WAJIB punya form alasan saat menonaktifkan;
+  ports/ship-lines tidak punya tombol ini (kolom aktif ada tapi tak dikelola).
 
-## Fakta yang TERVERIFIKASI (dipakai ulang tiap sesi — tidak perlu dicek lagi)
+### 4. Aturan DOMAIN-RULES untuk pph23
+**R3.5 "Kapan PPh 23 dipotong" (BLOCKER)**: `> Agent: JANGAN pilih salah
+satu. Sampai terjawab, pph23_applicable adalah field manual ...` —
+artinya: tampilkan pph23Default sebagai checkbox/toggle MANUAL di form;
+JANGAN disimpulkan dari data lain. (Catatan: di master bernama
+`pph23Default`; `pph23_applicable` adalah field per-invoice/job.)
+NPWP: tampilkan apa adanya; TANPA validasi format, tanpa menebak nilai kosong.
 
-1. **Server actions PERSIS** (`src/lib/actions/master.ts`, semua menerima
-   `FormData`, mengembalikan `Promise<HasilAction>`):
-   - `actionBuatCustomer`, `actionUbahCustomer` (field FormData: id*,
-     nama, legalName, npwp, alamat, topHari, pph23Default[checkbox]);
-     `actionStatusCustomer`
-   - `actionBuatVendor`, `actionUbahVendor` (+ vendorType, paymentTerm,
-     paymentTermDays); `actionStatusVendor`
-   - `actionBuatPort`, `actionUbahPort` (kode, nama, negara) — SUDAH DIPAKAI
-   - `actionBuatShipLine`, `actionUbahShipLine` (kode, nama) — SUDAH DIPAKAI
-   - `actionUbahChargeCode` (kode sbg id; keterangan, nameId, category,
-     defaultLeg, kategoriFixed[checkbox → FIXED/OPSIONAL], segmentScope
-     [DOM|EXIM|BOTH], defaultReimburse, isAtCostDefault, isTaxable,
-     pph23Applicable, butuhVendor); `actionStatusChargeCode`
-   - Status action membaca `id`, `aktifBaru` ("true"/"false"), `alasan`.
-   - `HasilAction = { ok:true; miripDengan?: {id,nama,skor}[] } |
-     { ok:false; error:string }`.
-2. **daftar\*** di `src/lib/master-data/index.ts` (semua hanya perlu
-   `dbOrTx`, urut abadi): `daftarCustomer` (by nama), `daftarVendor`
-   (by nama), `daftarPort` (by nama) — SUDAH DIPAKAI, `daftarShipLine`
-   (by nama) — SUDAH DIPAKAI, `daftarChargeCode` (by kode).
-3. **Kolom DB** (dari 0000 + 0002):
-   - customers: id, nama, legal_name, npwp, alamat, top_hari,
-     pph23_default, aktif
-   - vendors: id, nama, legal_name, npwp, vendor_type, payment_term,
-     payment_term_days, pph23_default, aktif
-   - charge_codes: kode (immutable), keterangan, name_id, category
-     (nullable), default_leg, kategori (FIXED|OPSIONAL), segment_scope
-     (DOM|EXIM|BOTH), default_reimburse, is_at_cost_default, is_taxable,
-     pph23_applicable, butuh_vendor, aktif
-4. **Komponen siap pakai** `src/components/master/primitives.tsx`:
-   PageHeader, DataTable/Kolom, BarisKosong, FormDialog (+Field, Input,
-   Checkbox, Select, TextArea), PillButton, PesanHasil, PeringatanMirip,
-   BadgeStatus, requiredMark, kls. Token desain: canvas, ink/ink-80/ink-48,
-   hairline, divider, accent/accent-focus/accent-dark; tanpa shadow.
+### 5. Komponen primitif (`src/components/master/primitives.tsx`)
+HalamanJudul, PeringatanMirip({items:{nama,skor}[]}), BadgeStatus({aktif}),
+PesanHasil({hasil}), TombolPill({varian:"utama"|"merusak"|"netral"}),
+kelasInput, kelasTombolSekunder, Field({label}).
+PeringatanMirip di-render bila `hasil.miripDengan?.length` — sama seperti
+form ports (`PeringatanMirip items={hasil.miripDengan ?? []}`). Ini yang
+mendeteksi kasus MATEREE/MATEREE NUSANTARA (cariKandidatMirip di
+master-data dipanggil otomatis oleh actionBuat*/actionUbah* vendor/customer).
 
-## Pola halaman untuk sesi berikutnya (contoh konkret: tiru ports / ship-lines)
+### 6. Pola halaman (tiru ports/ship-lines PERSIS)
+- page.tsx: server component, `export const dynamic = "force-dynamic"`,
+  `await requireUser()`, `await searchParams` ({edit?: string}),
+  `daftarVendor(db)`; section form max-w-md border-hairline bg-pearl p-4
+  (FormUbah bila ?edit= cocok, else FormBuat); tabel `thead bg-parchment`,
+  `th px-3 py-2 text-left text-micro uppercase text-ink-48` (Aksi
+  text-right), baris `border-b border-divider`, link Ubah
+  `?edit=<id>` text-accent.
+- form.tsx: "use client"; FormBuatX & FormUbahX; useActionState(action,
+  null); nama* required minLength 2 autoFocus; field lain defaultValue;
+  checkbox defaultChecked; submit → !res.ok setNiat("error"), res.ok →
+  router.push("/master/<halaman>") + router.refresh(); PesanHasil +
+  PeringatanMirip + TombolPill Simpan + batal kelasTombolSekunder.
+- TAMBAHAN vendors/customers vs ports: kolom Status (BadgeStatus aktif)
+  + aksi Nonaktifkan/Aktifkan. Saran bentuk konsisten dengan pola:
+  form nonaktif kecil per baris (atau dialog) yang POST actionStatusX
+  dengan hidden id + aktifBaru="false" + textarea/input alasan WAJIB;
+  reaktivasi tombol langsung aktifBaru="true". Angka (topHari/
+  paymentTermDays) pakai tabular-nums.
+- Kolom tabel vendors: Nama, Tipe, Term (+hari), PPh23, Status, Aksi.
+  Kolom customers: Nama, TOP (hari), PPh23, Status, Aksi.
+  (NPWP/alamat/legalName boleh tidak di tabel — ada di form edit.)
+- Gate per halaman: `pnpm tsc --noEmit` ; `pnpm vitest run` ;
+  `pnpm biome check` (file baru: `npx @biomejs/biome check <file> --write`
+  dulu). Commit: `feat(master-vendors): halaman CRUD /master/vendors - Irisan 3`.
+- PowerShell: pakai `;` bukan `&&`. Vitest penuh butuh Postgres lokal.
 
-1. Server component `page.tsx`: `requireUser()` dari
-   `@/lib/session/index`, `daftarX(db)` dari `@/lib/master-data/index`,
-   render DataTable; dialog tambah + `searchParams.edit` → dialog edit
-   dengan `form.tsx`.
-2. Client component `form.tsx`: `"use client"`; props `mode:
-   "buat" | "ubah"` + `awal?` + `onTutup`; `useActionState(action,
-   stateAwal)`; submit → bila `res.ok`, `router.refresh()`; tombol batal
-   menutup dialog (`router.push("/master/<halaman>")` saat mode edit).
-3. Halaman dengan kolom `aktif` (vendors, customers, charge-codes)
-   MENAMBAHKAN: BadgeStatus di kolom status + tombol/form nonaktifkan
-   (`actionStatusX` dengan `id`, `aktifBaru`, `alasan` wajib saat
-   menonaktifkan) — berbeda dari ports & ship-lines yang tanpa nonaktif.
-4. Gate: `pnpm tsc --noEmit`; `pnpm vitest run`;
-   `pnpm biome check` (atau `npx @biomejs/biome check <file-baru> --write`
-   lalu cek ulang).
-5. `git add <file-baru>` → commit dengan pesan
-   `feat(master-<halaman>): halaman CRUD /master/<halaman> - Irisan 3`.
-6. Timpa file ini dengan status akurat, commit docs terpisah, BERHENTI.
-
-## Catatan teknis
-
-- PowerShell: jangan pakai `&&`; pakai `;` antar perintah.
-- Output `npx vitest run` kadang terpotong di terminal; pastikan baris
-  `Test Files ... passed` dan `Tests ... passed` serta `EXIT:0`.
-- Vitest penuh (`pnpm vitest run`) butuh DB lokal (integration test
-  master-data); bila gagal koneksi, pastikan Postgres lokal jalan.
+### 7. Charge-codes (sesi berikutnya, JANGAN sekarang)
+kode immutable (input disabled saat edit), segmentScope select
+DOM|EXIM|BOTH, kategoriFixed checkbox → FIXED|OPSIONAL, + tombol
+nonaktifkan (actionStatusChargeCode). Lihat butir 1 handoff lama untuk
+field lengkap actionUbahChargeCode.
