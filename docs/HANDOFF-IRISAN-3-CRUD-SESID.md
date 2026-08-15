@@ -1,16 +1,36 @@
-# HANDOFF IRISAN 3 CRUD — SESI D4 (diperbarui Sesi D4b: vendors SELESAI & ter-commit)
+# HANDOFF IRISAN 3 CRUD — SESI D4 (diperbarui Sesi D4c: koreksi fakta akses/otorisasi/audit; vendors SELESAI commit 110df3e)
 
-> Status: **vendors CRUD selesai & ter-commit (commit 110df3e), semua gate hijau**.
-> Customers BELUM dimulai (context sesi D4b habis setelah vendors).
-> Lanjut sesi berikutnya: kerjakan customers persis mengikuti pola vendors.
+> Status: **vendors CRUD selesai & ter-commit (110df3e), semua gate hijau**.
+> Sesi D4c: dokumen ini dikoreksi dulu (lihat "KOREKSI FAKTA" di bawah),
+> lalu customers dikerjakan mengikuti PERSIS pola vendors.
+
+## KOREKSI FAKTA SESI D4c (WAJIB dibaca sebelum coding customers)
+
+Dokumen ini sebelumnya memuat frasa keliru
+`requireRole(ADMIN, OPERATOR) + catatAudit per render`.
+Fakta yang SUDAH DIVERIFIKASI LITERAL di kode (commit 08c966e):
+
+1. **Akses halaman**: pakai `requireUser()` (login saja, tanpa cek role di
+   halaman). Tidak ada `requireRole` di `src/app/master/*/page.tsx`.
+2. **Otorisasi mutasi sesungguhnya** ada di server action → fungsi lib
+   `src/lib/master-data` yang memanggil `assertCan(user.role, "master:manage")`
+   — hanya **OWNER + MANAGER** yang boleh; **STAFF ditolak** (bukan ADMIN/OPERATOR;
+   peran ADMIN/OPERATOR tidak ada di sistem ini — lihat docs/RBAC.md).
+3. **Audit** ditulis lewat `writeAudit()` di dalam `db.transaction` yang SAMA
+   dengan mutasi — **1 baris per mutasi** (aksi CREATE/EDIT/NONAKTIFKAN/AKTIFKAN),
+   **BUKAN per render**. Tidak ada catatAudit/writeAudit di page.tsx mana pun.
+4. Actions master (`src/lib/actions/master.ts`) polanya: `"use server"` →
+   `requireUser()` → fungsi lib (assertCan + transaction + writeAudit).
+   Return type `HasilAction`: `{ ok: true; miripDengan?: Array<{id;nama;skor}> }`
+   | `{ ok: false; error: string }` (tanpa field `message`).
 
 ## HASIL SESI D4b (commit 110df3e)
 
 ### Yang dibuat
-- `src/app/master/vendors/page.tsx` — server component, pola persis ports/ship-lines:
-  `requireRole(["ADMIN","OPERATOR"])` + `catatAudit` per render; cari `?q`
-  (lower(nama) LIKE), urut nama asc; tabel kolom Nama, Tipe, Term (+hari),
-  PPh23, **Status (BadgeStatus)**, Aksi; tombol "Tambah Vendor".
+- `src/app/master/vendors/page.tsx` — server component:
+  `requireUser()`; cari `?q` (lower(nama) LIKE), urut nama asc; tabel kolom
+  Nama, Tipe, Term (+hari), PPh23, **Status (BadgeStatus)**, Aksi; tombol
+  "Tambah Vendor".
 - `src/app/master/vendors/form.tsx` — client component:
   - `FormBuatVendor` / `FormUbahVendor`: useActionState + actionBuatVendor/
     actionUbahVendor; field nama (minLength 2), legalName, npwp, vendorType
@@ -18,13 +38,17 @@
     paymentTermDays (default 30), checkbox pph23Default; PeringatanMirip
     tampil bila action kembalikan miripDengan; sukses tanpa mirip →
     router.push("/master/vendors") + refresh.
-  - `FormNonaktifVendor`: form terpisah (bukan inline) dengan field alasan
-    WAJIB (minLength 3) + hidden aktifBaru=false → actionStatusVendor;
+  - `FormNonaktifVendor`: form terpisah dengan field alasan WAJIB
+    (minLength 3) + hidden aktifBaru=false → actionStatusVendor;
     dipicu `?nonaktif=<id>`.
   - `FormAktifkanVendor`: tombol inline di baris tabel, hidden aktifBaru=true
     (alasan opsional/skip) → actionStatusVendor.
+- **Perhatian commit**: `BadgeStatus` yang dipakai vendors/page.tsx tidak ikut
+  ter-commit di 110df3e (muncul lagi di working tree sesi D4c). Saat commit
+  customers, pastikan `src/components/master/primitives.tsx` ikut di-stage
+  agar file ter-commit konsisten.
 
-### Gate (semua hijau, hasil literal)
+### Gate D4b (semua hijau, hasil literal)
 ```
 $ pnpm tsc --noEmit
 TSC-EXIT:0
@@ -38,95 +62,58 @@ $ pnpm vitest run
       Tests  163 passed (163)
 VITEST-EXIT:0
 ```
-Catatan biome: `autoFocus` dihapus (lint a11y noAutofocus) — konsisten
-dengan ports/ship-lines yang juga tidak memakai autoFocus.
 
 ### Commit
 ```
 110df3e feat(master): CRUD vendors - halaman daftar, form buat/ubah, nonaktif (alasan wajib)/aktifkan
- 2 files changed, 444 insertions(+)
 ```
 
 ## INSTRUKSI SESI BERIKUTNYA — customers
 
 1. Kerjakan customers dengan pola PERSIS sama seperti vendors (jangan bikin
-   pola baru). Sumber fakta: bagian "Fakta TERVERIFIKASI sesi D4" di bawah
-   (masih valid) + baca `src/app/master/vendors/` sebagai template terdekat.
-2. Entitas customers: skema sudah ada (SESIB/SESID facts di bawah); actions
-   `actionBuatCustomer` / `actionUbahCustomer` / `actionStatusCustomer`
+   pola baru). Template terdekat: `src/app/master/vendors/`.
+2. Actions `actionBuatCustomer` / `actionUbahCustomer` / `actionStatusCustomer`
    sudah ada di `src/lib/actions/master.ts` — tinggal dipakai dari form.
-3. Tambahkan kolom Status (BadgeStatus) + aksi Nonaktifkan (alasan WAJIB) /
-   Aktifkan (opsional) — tiru vendors persis.
-4. Gate wajib: `pnpm tsc --noEmit`, `pnpm vitest run`, `pnpm biome check`
-   (semua hijau, tempel hasil literal), lalu commit.
-5. Setelah customers: audit-coverage di page.tsx (catatAudit per render)
-   sudah menjadi pola — pertahankan.
-6. Jangan lupa `pnpm biome check --write` setelah menulis file baru, lalu
-   hapus `autoFocus` bila dipakai (rule a11y aktif di repo ini).
+3. Skema `customers` (sudah diverifikasi literal di src/db/schema/index.ts):
+   id, nama (not null), npwp, **alamat, kota, pic, telepon**, isActive +
+   audit fields (dibuatOleh/diubahOleh/dibuatPada/diubahPada).
+   **TIDAK ADA kolom paymentTermDays/paymentTerm/email/kodePos** — tabel
+   cukup kolom Nama | Status | Aksi (+npwp bila mau), form fields hanya
+   nama/npwp/alamat/kota/pic/telepon.
+4. Aksi baris: Nonaktifkan (alasan WAJIB) / Aktifkan (opsional) + Ubah —
+   tiru vendors persis. Sertakan `src/components/master/primitives.tsx`
+   (BadgeStatus) dalam commit.
+5. Gate wajib sebelum commit: `pnpm tsc --noEmit`, `pnpm vitest run`,
+   `pnpm biome check` (semua hijau, tempel hasil literal), lalu commit
+   `feat(master): ...`. JANGAN pakai `autoFocus` (lint a11y noAutofocus).
+6. Audit sudah ditangani lib: 1 baris `writeAudit()` per mutasi di dalam
+   `db.transaction` yang sama — JANGAN menulis audit per render halaman.
 
 ---
 
-## Fakta TERVERIFIKASI sesi D4 (commit e2fbffe) — tetap jadi acuan
+## Fakta pendukung lain (terverifikasi sesi D4/D4c)
 
-### 1. Actions master data yang SUDAH ADA di src/lib/actions/master.ts
-- Ports: `actionBuatPort`, `actionUbahPort`, `actionHapusPort` (soft delete `isDeleted`)
-- Ship lines: `actionBuatShipLine`, `actionUbahShipLine`, `actionStatusShipLine` (toggle isActive; alasan opsional)
-- Vendors: `actionBuatVendor`, `actionUbahVendor`, `actionStatusVendor` (toggle isActive; alasan WAJIB saat nonaktif, opsional saat aktif — divalidasi `ubahStatusAktif`)
-- Customers: `actionBuatCustomer`, `actionUbahCustomer`, `actionStatusCustomer` (toggle isActive)
-- Charge codes: `actionBuatChargeCode`, `actionUbahChargeCode`, `actionStatusChargeCode`
-- Rate cards: `actionBuatRateCard`, `actionUbahRateCard`, `actionStatusRateCard`
-
-Semua pakai pola sama: `"use server"` → `requireRole([...])` → `parseFormData`
-(zod) → `db.transaction` → `catatAudit(...)`. Return type `HasilAction`:
-`{ ok: true; message: string; miripDengan?: Array<{ id; nama; skor }> }` |
-`{ ok: false; error: string }`.
-
-### 2. Validasi di src/lib/master-data/index.ts
-- `buatPort`, `ubahPort`, `hapusPort`, `buatShipLine`, `ubahShipLine`,
-  `ubahStatusAktif` (shared: vendors/ship-lines/customers/charge-codes/rate-cards),
-  `buatVendor`, `ubahVendor`, `buatCustomer`, `ubahCustomer`,
-  `buatChargeCode`, `ubahChargeCode`, `buatRateCard`, `ubahRateCard`
-- `ubahStatusAktif` MENOLAK bila `aktifBaru === false` tanpa alasan (nonaktif wajib alasan).
-- Deduplikasi nama via `cariMirip` (src/lib/similarity) — return `miripDengan` di hasil action saat skor mirip > threshold.
-
-### 3. Skema DB (src/db/schema/index.ts, sudah migrasi 0002)
-- `vendors`: id, nama, legalName, npwp, vendorType (SHIPPING|CONT|TRUCKING|OTHERS),
-  paymentTerm, paymentTermDays, pph23Default (boolean, default false),
-  isActive (default true), audit fields (dibuatOleh/diubahOleh/dibuatPada/diubahPada).
-- `customers`: id, nama, npwp, alamat, kota, kodePos, pic, telepon, email,
-  isActive, audit fields. Term pembayaran customers: `paymentTermDays` +
-  `paymentTerm` (kolom sama seperti vendors — verifikasi cepat saat coding
-  hanya untuk customers bila ragu; ERD §customers).
-
-### 4. Pola UI (tiru PERSIS)
-- `src/app/master/ports/page.tsx`: server component,
-  `requireRole(["ADMIN","OPERATOR"])`, `catatAudit` per render,
-  cari `?q` (lower(nama) LIKE), urut asc, tabel + form cari + tombol tambah;
-  aksi baris berupa `<a>` ke `/master/ports/<id>/edit` atau `?hapus=<id>`.
-- `src/app/master/ship-lines/page.tsx`: sama + kolom Status (BadgeStatus)
-  dan tombol toggle status inline (form POST kecil di dalam baris).
-- `src/app/master/ports/form.tsx` & `ship-lines/form.tsx`: client component,
-  `useActionState` membungkus server action, `router.push` kembali +
-  `router.refresh()` saat sukses, `PeringatanMirip` untuk kandidat duplikat.
-- `src/components/master/primitives.tsx`: `HalamanMaster`, `JudulHalaman`,
-  `TabelMaster`, `BarisTabel`, `Sel`, `TombolPill`, `BadgeStatus`,
-  `PesanHasil`, `Field`, `PeringatanMirip`, `kelasInput`, `kelasTombolSekunder`.
-  Catatan: `TombolPill` mendukung `varian="merah"|"merusak"` untuk aksi nonaktif/hapus.
-
-### 5. Konvensi penamaan & aturan terkait
-- Rute: `/master/vendors` (SELESAI), `/master/customers` (berikutnya),
+- Validasi di `src/lib/master-data/index.ts`: `buatCustomer`, `ubahCustomer`,
+  `ubahStatusAktif` (shared; MENOLAK `aktifBaru=false` tanpa alasan).
+  Deduplikasi nama via `cariMirip` (src/lib/similarity) — return
+  `miripDengan` di hasil action saat skor > threshold.
+- Primitif UI aktual di `src/components/master/primitives.tsx` (bukan nama
+  lama HalamanMaster/TabelMaster): `HalamanJudul`, `PeringatanMirip`,
+  `BadgeStatus`, `PesanHasil`, `TombolBukaForm`; pola dialog Tailwind
+  `hidden` + `group-open:block` (tanpa komponen FormNonaktif generik).
+- Konvensi rute: `/master/vendors` (SELESAI), `/master/customers` (berikutnya),
   `/master/charge-codes`, `/master/rate-cards`.
-- Semua halaman master: role ADMIN + OPERATOR boleh kelola; audit wajib
-  (catatAudit dengan entitas + keterangan berbahasa Indonesia).
-- DOMAIN-RULES: pph23Default vendor adalah checkbox manual (JANGAN disimpulkan
-  dari data lain); nonaktifkan vendor WAJIB alasan; aktifkan alasan opsional.
-- Gate (dari TOOLCHAIN/RENCANA): `pnpm tsc --noEmit`, `pnpm vitest run`,
-  `pnpm biome check -- .` harus hijau sebelum commit; commit message
-  mengikuti konvensi `feat(master): ...`.
+- Gate (TOOLCHAIN/RENCANA): `pnpm tsc --noEmit`, `pnpm vitest run`,
+  `pnpm biome check -- .` hijau sebelum commit.
 
-### 6. State terakhir repositori
-- Commit terakhir sebelum sesi D4b: e2fbffe (semua gate hijau, Irisan 3 SESIB selesai).
-- Commit sesi D4b: **110df3e** (vendors CRUD, gate hijau — hasil di atas).
-- Tests saat itu: 15 files / 163 tests passed.
-- `docs/HANDOFF-IRISAN-3-CRUD.md` dan `docs/RENCANA-IRISAN-3-CRUD.md` masih relevan;
-  file ini menimpa versi sebelumnya dengan status paling mutakhir.
+## State terakhir repositori
+- Commit HEAD sesi D4c: `08c966e` + koreksi dokumen ini (commit terpisah).
+- Working tree selain dokumen: hanya `src/components/master/primitives.tsx`
+  (BadgeStatus yang terlewat dari commit 110df3e).
+- Tests terakhir hijau: 15 files / 163 tests passed.
+</content>
+<parameter name="task_progress">- [x] Verifikasi pola vendors + actions + schema customer
+- [x] Cek BadgeStatus di HEAD (hilang dari commit vendors = harus ikut ter-commit)
+- [x] Koreksi frasa keliru di HANDOFF (write_to_file fallback)
+- [ ] Commit koreksi dokumen
+- [ ] STOP: context 95%+ — customers dikerjakan sesi berikutnya dengan instruksi terkoreksi
