@@ -25,14 +25,13 @@ export function HalamanJudul({
 export function PeringatanMirip({ items }: { items: { nama: string; skor: number }[] }) {
   if (items.length === 0) return null;
   return (
-    <div
-      role="status"
-      className="mt-2 rounded border border-hairline px-3 py-2 text-label"
+    <output
+      className="mt-2 block rounded border border-hairline px-3 py-2 text-label"
       style={{ color: "#c93400" }}
     >
-      Mungkin dupat dengan:{" "}
+      Mungkin duplikat dengan:{" "}
       {items.map((m) => `${m.nama} (${Math.round(m.skor * 100)}%)`).join("; ")}
-    </div>
+    </output>
   );
 }
 
@@ -40,14 +39,13 @@ export function PeringatanMirip({ items }: { items: { nama: string; skor: number
 export function PesanHasil({ hasil }: { hasil: { ok: boolean; error?: string } | null }) {
   if (!hasil) return null;
   return (
-    <div
-      role="status"
-      className={`mt-2 rounded border border-hairline px-3 py-2 text-label ${
+    <output
+      className={`mt-2 block rounded border border-hairline px-3 py-2 text-label ${
         hasil.ok ? "text-green" : "text-red"
       }`}
     >
       {hasil.ok ? "Tersimpan." : hasil.error}
-    </div>
+    </output>
   );
 }
 
@@ -73,7 +71,9 @@ export function TombolPill({
     <button
       type="submit"
       className={`inline-flex min-h-touch items-center justify-center text-label font-medium transition ${kelas}`}
-      style={varian === "merusak" ? { color: "#d70015", borderColor: "#d70015" } : undefined}
+      style={
+        varian === "merusak" ? { color: "#d70015", borderColor: "#d70015" } : undefined
+      }
     >
       {children}
     </button>
@@ -97,8 +97,12 @@ export function Field({
   children: React.ReactNode;
 }) {
   return (
+    // biome-ignore lint/a11y/noLabelWithoutControl: control (input/select) diteruskan lewat children
     <label className="block">
-      <span className="mb-1 block text-micro uppercase text-ink-48" style={{ letterSpacing: "0.04em" }}>
+      <span
+        className="mb-1 block text-micro uppercase text-ink-48"
+        style={{ letterSpacing: "0.04em" }}
+      >
         {label}
       </span>
       {children}

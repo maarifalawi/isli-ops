@@ -22,8 +22,16 @@ export default function RootLayout({
       <body>
         <header className="border-b border-hairline bg-canvas">
           <div className="mx-auto flex h-12 max-w-[1280px] items-center justify-between px-4">
-            <span className="text-section">ISLI Ops</span>
-            <span className="text-label text-ink-48">Irisan 0 · kerangka berjalan</span>
+            <nav className="flex items-center gap-4">
+              <span className="text-section">ISLI Ops</span>
+              <a
+                href="/master"
+                className="flex min-h-[44px] items-center text-label text-ink-48 hover:text-ink"
+              >
+                Master Data
+              </a>
+            </nav>
+            <span className="text-label text-ink-48">Irisan 3 · CRUD master</span>
           </div>
         </header>
         <main className="mx-auto max-w-[1280px] px-4 py-6">{children}</main>

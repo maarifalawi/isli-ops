@@ -14,9 +14,7 @@
  * daftar — server component mengambil data segar dari DB.
  */
 
-import { revalidatePath } from "next/cache";
 import { db } from "@/db/index";
-import { requireUser } from "@/lib/session/index";
 import {
   buatCustomer,
   buatPort,
@@ -29,6 +27,8 @@ import {
   ubahStatusAktif,
   ubahVendor,
 } from "@/lib/master-data/index";
+import { requireUser } from "@/lib/session/index";
+import { revalidatePath } from "next/cache";
 
 export type HasilAction =
   | { ok: true; miripDengan?: { id: string; nama: string; skor: number }[] }
