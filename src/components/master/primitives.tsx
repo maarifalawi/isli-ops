@@ -35,6 +35,20 @@ export function PeringatanMirip({ items }: { items: { nama: string; skor: number
   );
 }
 
+/** Badge status aktif/nonaktif: titik warna + teks (RENCANA §8). */
+export function BadgeStatus({ aktif }: { aktif: boolean }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 text-label ${aktif ? "text-green" : "text-red"}`}
+    >
+      <span
+        className={`inline-block h-2 w-2 rounded-full ${aktif ? "bg-green" : "bg-red"}`}
+      />
+      {aktif ? "Aktif" : "Nonaktif"}
+    </span>
+  );
+}
+
 /** Pesan hasil server action (error = merah, sukses = hijau). */
 export function PesanHasil({ hasil }: { hasil: { ok: boolean; error?: string } | null }) {
   if (!hasil) return null;
