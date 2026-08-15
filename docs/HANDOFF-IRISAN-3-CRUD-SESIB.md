@@ -33,6 +33,19 @@ Catatan implementasi penting:
 - §10.5 e2e `tests/e2e/master-crud.spec.ts` + `pnpm verify` + catat isu REVOKE
   app_role di OPEN-QUESTIONS.md → commit iris3-crud-05 + handoff akhir.
 
+### Basis UI untuk §10.4 (sudah diverifikasi)
+
+- `src/app` masih berisi: `layout.tsx`, `page.tsx`, `globals.css`, `login/`,
+  `logout/` — BELUM ada folder `master/`.
+- `layout.tsx`: header "ISLI Ops" + badge "Irisan 0", main `max-w-[1280px] px-4 py-6`,
+  class: `border-hairline bg-canvas text-ink-48 text-section text-label`
+  (token DESIGN-SYSTEM di tailwind.config.ts).
+- Auth: `requireUser()` dari `src/lib/session/index.ts` (redirect /login?error=…).
+  Guard aksi: `assertCan(user.role, "master:manage")`; STAFF harus ditolak.
+- Login e2e: pola `tests/e2e/auth.spec.ts`; user OWNER ada via Supabase Auth
+  (lihat `scripts/create-supabase-users.md` + seed users).
+- Uang/format: util di `src/lib/money`; jangan re-format manual.
+
 ## Keputusan final (jangan bahas ulang)
 
 1. TIDAK ada migrasi baru — skema lengkap di drizzle 0000/0001/0002.
