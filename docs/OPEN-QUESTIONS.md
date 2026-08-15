@@ -319,3 +319,13 @@ terulang tinggi.
 | Q77 | ⚠️ Approval addendum VENDOR (R17.5) -- apakah levelnya sama seperti addendum customer (Manager/Owner, ≠ pembuat), atau vendor punya alur approval sendiri (misalnya cukup yang biasa approve pembayaran vendor)? | INDRA | R17.5 | menunggu |
 | Q78 | ⚠️ Untuk invoice yang terbit sebelum POD (R9.4b) -- siapa yang berhak approve jalur ini? Sama dengan approval final job (Pak Indra), atau boleh Manager Finance? | INDRA | R9.4b | menunggu |
 | Q79 | ⚠️ Berita acara (R6.4) -- format dokumennya bebas (foto/PDF apa saja), atau ada template baku yang harus dipakai? | NIKEN | R6.4 | menunggu |
+
+## app_role / REVOKE masterdata di level database (Irisan 3, tahap 10.5)
+
+- Dicatat: 2026-08-16, Sesi D, tahap 10.5 (langkah 3).
+- Hasil pemeriksaan: `grep -r "REVOKE\|app_role" drizzle/*.sql` -> **0 match** (PowerShell: `Select-String -Path drizzle\*.sql -Pattern 'REVOKE','app_role'`, keluaran kosong, exit code 1).
+- Artinya: `app_role` **belum ada sama sekali** di skema maupun migrasi (0000, 0001, 0002).
+- Sesuai instruksi 10.5 langkah 3: migrasi REVOKE **TIDAK dibuat** sekarang, karena membuat `app_role` berada di luar cakupan asli Irisan 3 (skema dibekukan sejak migrasi 0002).
+- **Open question untuk klien / Pak Indra**: apakah `app_role` (role aplikasi di level database, mis. OWNER/MANAGER/STAFF) akan diadakan pada irisan berikutnya, agar REVOKE akses masterdata dari role yang tidak berwenang dapat menyusul sebagai migrasi terpisah (mengikuti .clinerules/06-db-migrations.md: db:generate -> tunjukkan SQL -> persetujuan -> db:migrate)?
+- Status sementara: otorisasi mutasi master data dijaga di level aplikasi -- server actions `src/lib/actions/master.ts` via `assertCan(user.role, "master:manage")` (dimiliki OWNER dan MANAGER; STAFF ditolak), dibuktikan oleh skenario "STAFF melihat data master read-only tanpa tombol tambah" di `tests/e2e/master-crud.spec.ts` -- bukan di level database. (Tidak ada role bernama ADMIN di sistem ini; role yang sah hanya OWNER/MANAGER/STAFF.)
+- **Status: MENUNGGU** -- jawaban klien / Pak Indra ditunggu; TIDAK ada migrasi baru yang dibuat untuk ini (Irisan 3 ditutup 16 Agu 2026 tanpa REVOKE di level database).

@@ -82,13 +82,16 @@ Q05 SUDAH DIJAWAB (ceiling) -- Diametral seharusnya HIJAU sekarang, selisih Rp 1
 
 ## Slice 3 — Master data
 
-- [ ] Skema + migrasi: `customer`, `vendor`, `charge_code`, `port`, `ship_line`
-- [ ] Seed dari `fixtures/charge-codes.csv`
-- [ ] Kolom `charge_codes.kategori` (FIXED | OPSIONAL, R15.5) -- default OPSIONAL untuk kode baru
-- [ ] ⚠️ **Menunggu Q76** (mana dari 43 kode yang FIXED) sebelum menandai kode historis
-- [ ] Import customer & vendor yang sudah dinormalisasi
-- [ ] CRUD sederhana + RBAC
-- [ ] Deteksi duplikat nama saat input
+> ✅ **DITUTUP 16 Agu 2026** (Irisan 3) — rincian di `CHANGELOG.md`;
+> gate `pnpm verify` hijau (typecheck + lint + biome + 163/163 vitest + golden + 3/3 Playwright).
+
+- [x] Skema + migrasi: `customer`, `vendor`, `charge_code`, `port`, `ship_line`
+- [x] Seed dari `fixtures/charge-codes.csv`
+- [x] Kolom `charge_codes.kategori` (FIXED | OPSIONAL, R15.5) -- default OPSIONAL untuk kode baru
+- [x] ⚠️ **Menunggu Q76** (mana dari 43 kode yang FIXED) sebelum menandai kode historis — default OPSIONAL sudah diberlakukan; penandaan kode historis tetap menunggu Q76 (tidak memblokir slice)
+- [x] Import customer & vendor yang sudah dinormalisasi
+- [x] CRUD sederhana + RBAC
+- [x] Deteksi duplikat nama saat input
 
 ---
 
