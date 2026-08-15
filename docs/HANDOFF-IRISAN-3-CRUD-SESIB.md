@@ -1,46 +1,52 @@
-# HANDOFF IRISAN 3 CRUD — SESI B (status per 15 Agu 2026, ~18:28 WIB)
+# HANDOFF IRISAN 3 CRUD — SESI C (status per 15 Agu 2026, ~18:47 WIB)
 
-> Sesi implementasi dimulai (RENCANA di `docs/RENCANA-IRISAN-3-CRUD.md`).
-> Baca file INI dulu, baru RENCANA. Sesi sebelumnya (A) hanya menghasilkan
-> RENCANA + verifikasi prasyarat; sesi B mulai eksekusi §10.
+> Sesi C: menulis kode §10.3 (BELUM commit, BELUM test-hijau).
+> Baca file INI dulu, baru `docs/RENCANA-IRISAN-3-CRUD.md`.
+> Commit yang sudah ada: `bb7baad` iris3-crud-01 (audit), `7c5a2ab` iris3-crud-02 (similarity).
 
-## Yang sudah di-commit (2/5 langkah)
+## ⚠ WAJIB pertama di sesi D
 
-| Commit | Isi |
+1. `pnpm` TIDAK ada di PATH shell non-interaktif sesi ini. Jalankan di
+   terminal USER (bukan lewat AI):
+   ```powershell
+   cd "C:\Users\maari\Downloads\REAL V2\isli-ops"
+   pnpm vitest run tests/unit/audit.test.ts tests/unit/similarity.test.ts tests/integration/master-data.integration.test.ts
+   ```
+2. Jika hijau semua → commit sebagai `iris3-crud-03`:
+   ```
+   git add src/lib/master-data/index.ts tests/integration/master-data.integration.test.ts
+   git commit -m "iris3-crud-03: logika CRUD master data (5 entitas) + test integrasi"
+   ```
+3. Jika merah, perbaiki DULU. Error terakhir yang terlihat:
+   `column "top_hari" of relation "customers" contains null values` —
+   SUDAH difix di kode (`topHari: input.topHari ?? 30`,
+   `pph23Default: input.pph23Default ?? false` — DB kolom NOT NULL,
+   warisan Irisan-1).
+
+## Yang ditulis di sesi C (uncommitted)
+
+| File | Isi |
 |---|---|
-| `bb7baad` iris3-crud-01 | `src/lib/audit/index.ts` (writeAudit + AuditEntity + AuditAction) + `tests/unit/audit.test.ts` (8 test: append-only, tolak DELETE, tolak UPDATE, payload jsonb) |
-| `7c5a2ab` iris3-crud-02 | `src/lib/similarity/index.ts` (normalisasiTeks, jarakLevenshtein, similaritasLevenshtein, mirip ambang 0.85, cariKandidatMirip) + `tests/unit/similarity.test.ts` (11 test) |
+| `src/lib/master-data/index.ts` | Logika CRUD 5 entitas (RENCANA §4/§6): buat/ubah Customer, Vendor, Port, ShipLine, ubahChargeCode (kode immutable), ubahStatusAktif (soft delete, alasan wajib utk NONAKTIFKAN). Semua: assertCan(role,"master:manage") → tx: snapshot → mutasi → writeAudit TEPAT 1 baris. Pembacaan: daftarCustomer/Vendor/Port/ShipLine/ChargeCode. |
+| `tests/integration/master-data.integration.test.ts` | 14 test integrasi vs DB asli (pola job-sequence.integration.test.ts): RBAC STAFF ditolak, duplikat case-insensitive, similaritas miripDengan, kode immutable, nonaktif tanpa alasan ditolak, audit TEPAT 1 baris per mutasi. |
 
-## ⚠ WAJIB pertama di sesi C: verifikasi test yang BELUM dijalankan
+Catatan implementasi penting:
+- `writeAudit(tx,...)` menerima tx (transaksi) — modul audit murni DB, tanpa Next.
+- `assertCan`/`AuthorizationError` dari `src/lib/authz/index.ts`; STAFF tidak punya `master:manage`.
+- charge_codes PK TEXT → `entitas_id` audit diisi `null`, kode terekam di payload JSON + field alasan.
+- Port/ShipLine: tanpa nonaktifkan (RENCANA §6), hanya buat/ubah.
 
-Shell `powershell -Command` di sesi ini TIDAK menemukan `pnpm` di PATH —
-commit `iris3-crud-02` dibuat TANPA menjalankan test. Jalankan manual:
+## Sisa langkah (RENCANA §10.4–§10.5)
 
-```powershell
-pnpm vitest run tests/unit/similarity.test.ts tests/unit/audit.test.ts
-```
+- §10.4 komponen + halaman `/master/customers|vendors|ports|ship-lines|charge-codes`
+  (server components + server actions yang memanggil `src/lib/master-data`) → commit iris3-crud-04.
+- §10.5 e2e `tests/e2e/master-crud.spec.ts` + `pnpm verify` + catat isu REVOKE
+  app_role di OPEN-QUESTIONS.md → commit iris3-crud-05 + handoff akhir.
 
-Jika ada yang merah, perbaiki DULU sebelum lanjut.
+## Keputusan final (jangan bahas ulang)
 
-## Sisa langkah (RENCANA §10.3–§10.5)
-
-- §10.3 server actions CRUD 5 entitas + test integrasi → commit iris3-crud-03
-  - Baca `src/lib/authz/index.ts` (requireLogin/requireAdmin — BELUM pernah dibaca penuh di sesi A/B).
-- §10.4 komponen + halaman `/master/**` → commit iris3-crud-04
-- §10.5 e2e master-crud.spec.ts + `pnpm verify` + handoff akhir → commit iris3-crud-05
-
-## Keputusan penting yang sudah final (jangan bahas ulang)
-
-1. **TIDAK ada migrasi baru** — prasyarat skema sudah lengkap di drizzle 0000/0001/0002 (verified via search_files di sesi A).
-2. **REVOKE di 0000 (baris 197, 203, 217, 223) diabaikan**: role `app_role` TIDAK ADA di repo ini (grep `app_role` hanya kena 0000 itu sendiri; 0001/0002 tidak menyebutnya). Catat di OPEN-QUESTIONS.md saat §10.5.
-3. **audit_log sudah ada** di drizzle 0001 (kolom: actor, entity, entity_id, action, payload jsonb, logged_at) — writeAudit tinggal pakai, tanpa ALTER.
-4. Script DB via `node --experimental-strip-types --env-file=.env.local` (lihat `scripts/run-db-seed.ps1`). `pgcrypto` untuk `gen_random_uuid()` sudah di-extension pgcrypto (0000 baris ~5) — cek sebelum pakai.
-5. Test DB pakai koneksi langsung (`createDb(drizzleDb)`) seperti `tests/integration/job-sequence.integration.test.ts`.
-
-## Fakta cepat yang sering dibutuhkan
-
-- Entitas & aturan unik (RENCANA §2): customers/vendors = kode unik case-insensitive; ports/ship_lines/charge_codes = tanpa kode.
-- Soft delete: `is_active=false`, TIDAK hard delete (DOMAIN-RULES D-21).
-- RBAC: 3 role (admin/ops/finance); hanya admin yang create/update/inactivate (RBAC.md §4).
-- Route: `/master/customers|vendors|ports/ship-lines|charge-codes`.
-- `pnpm verify` = typecheck + biome + test:all (package.json).
+1. TIDAK ada migrasi baru — skema lengkap di drizzle 0000/0001/0002.
+2. REVOKE `app_role` di 0000 diabaikan (role tidak ada di repo).
+3. audit_log (0001): actor/entity/entity_id/action/payload jsonb/logged_at; writeAudit sudah dipakai iris3-crud-01.
+4. Test DB: koneksi langsung via `createDb(drizzleDb)` seperti test integrasi job-sequence.
+5. `pnpm verify` = typecheck + biome + test:all.
