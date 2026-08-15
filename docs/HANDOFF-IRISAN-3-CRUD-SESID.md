@@ -1,91 +1,173 @@
-# HANDOFF IRISAN 3 CRUD — SESI D4d (customers SELESAI commit 39ae5eb; dokumen sudah dikoreksi commit a2bb255)
+# HANDOFF IRISAN 3 — CRUD — SESI D (update: pasca-sesi charge-codes)
 
-> Status sesi ini: **customers CRUD selesai & ter-commit (39ae5eb), semua gate
-> hijau**. Koreksi fakta akses/otorisasi/audit sudah di-commit (a2bb255).
-> Sesi berikutnya: **charge-codes + hub** (JANGAN dikerjakan sebelum sesi itu).
+> **STATUS TERKINI SESI D** — semua enam entitas CRUD sudah SELESAI:
+> - [x] §10.2 ports/ship-lines (commit SESI C: 8008e36)
+> - [x] §10.3 vendors/customers (commit SESI C: 8008e36, file 0d4e3a7)
+> - [x] §10.4 charge-codes (commit SESI D: dff866e)
+> - [ ] §10.1 /master/page.tsx hub — SATU-SATUNYA yang tersisa, biasanya kecil;
+>   kerjakan TERAKHIR.
 
-## Fakta akses/otorisasi/audit (TERVERIFIKASI LITERAL — dipertahankan dari D4c)
+## Commit & Gate Hijau (charge-codes)
+- Commit: `dff866e` — feat(master): CRUD UI charge-codes /master/charge-codes
+  (kode immutable, kategori FIXED eksplisit). 4 files, +607.
+- `pnpm tsc --noEmit` → EXIT_CODE=0 (no errors).
+- `pnpm vitest run` → Test Files 15 passed (15) | Tests 163 passed (163),
+  EXIT_CODE=0.
+- `pnpm biome check` → EXIT_CODE=0, "Checked 65 files ... Found 8 warnings."
+  (semua warnings pre-existing di scripts/: noConsole, noNonNullAssertion,
+  noParameterAssign, noExplicitAny — BUKAN dari kode sesi ini).
+- Catatan toolchain: pnpm 9.12.0 di-install global via `npm i -g pnpm@9.12`
+  di mesin ini (sebelumnya belum ada); pnpm-lock.yaml tidak berubah.
+- `git status` pasca-commit: working tree bersih.
 
-1. **Akses halaman**: `requireUser()` (login saja, tanpa cek role di halaman).
-   Tidak ada `requireRole` di `src/app/master/*/page.tsx`.
-2. **Otorisasi mutasi sesungguhnya** ada di server action → lib
-   `src/lib/master-data` memanggil `assertCan(user.role, "master:manage")`
-   — hanya **OWNER + MANAGER**; **STAFF ditolak**. Tidak ada peran
-   ADMIN/OPERATOR di sistem ini (lihat docs/RBAC.md).
-3. **Audit** ditulis lewat `writeAudit()` di dalam `db.transaction` yang SAMA
-   dengan mutasi — **1 baris per mutasi** (CREATE/EDIT/NONAKTIFKAN/AKTIFKAN),
-   **BUKAN per render**. Tidak ada writeAudit di page.tsx mana pun.
-4. Pola actions (`src/lib/actions/master.ts`): `"use server"` → `requireUser()`
-   → fungsi lib (assertCan + transaction + writeAudit). Return `HasilAction`.
+## Yang dikerjakan SESI D (charge-codes, §10.4)
 
-## HASIL SESI D4d — customers
+### 1. `buatChargeCode()` baru di `src/lib/master-data/index.ts` (+64 baris)
+- Sebelumnya HANYA ada `ubahChargeCode()`; CREATE baru ditambahkan.
+- Normalisasi kode: `teks(input.kode)?.toUpperCase()`.
+- Validasi: keterangan wajib; `category` bila diisi harus ada di
+  `CHARGE_CATEGORIES`; `segmentScope` bila diisi harus DOM|EXIM|BOTH;
+  `defaultLeg` bila diisi harus 1|2|3.
+- Duplikat PK ditolak: `select ... where eq(kode)` lalu `Kode "X" sudah dipakai.`
+- Default: kategori "OPSIONAL", segmentScope "BOTH", isTaxable true,
+  butuhVendor true, boolean lain false.
+- Audit: aksi "CREATE", entitas "CHARGE_CODE", entitasId null (PK TEXT),
+  sesudah = baris returning, alasan `CREATE kode <kode>`.
 
-### Commit
-```
-a2bb255 docs(iris3): koreksi fakta akses/otorisasi/audit di HANDOFF SESID
-39ae5eb feat(master): CRUD customers - halaman daftar, form buat/ubah, nonaktif (alasan wajib)/aktifkan
-37a3a72 feat(master): tambah BadgeStatus primitive dipakai halaman customers
-```
+### 2. `actionBuatChargeCode()` di `src/lib/actions/master.ts`
+- Membaca field FormData PERSIS kolom schema chargeCodes: kode, keterangan,
+  nameId, category, defaultLeg (`angka()`), segmentScope (`"BOTH"` fallback),
+  defaultReimburse, isAtCostDefault, isTaxable, pph23Applicable, butuhVendor
+  (`bool()`).
+- `kategori`: `bool(fd.get("kategoriFixed")) ? "FIXED" : "OPSIONAL"` —
+  checkbox eksplisit; TANPA centang → otomatis OPSIONAL.
+- `revalidatePath("/master/charge-codes")` bila ok.
 
-### Yang dibuat
-- `src/app/master/customers/page.tsx` — server component: `requireUser()`;
-  `daftarCustomer(db)`; tabel kolom **Nama | TOP (hari) | PPh23 | Status
-  (BadgeStatus) | Aksi**; dialog edit via `?edit=<id>`, nonaktif via
-  `?nonaktif=<id>`; reaktivasi tombol Aktifkan inline.
-- `src/app/master/customers/form.tsx` — client component:
-  - `FormBuatCustomer` / `FormUbahCustomer`: useActionState +
-    `actionBuatCustomer`/`actionUbahCustomer`; field nama (minLength 2),
-    legalName, npwp, alamat, topHari (default 30), checkbox pph23Default
-    (DOMAIN-RULES R3.5: JANGAN disimpulkan dari data lain);
-    `PeringatanMirip` tampil bila action kembalikan `miripDengan`; sukses
-    tanpa mirip → `router.push("/master/customers")` + refresh.
-  - `FormNonaktifCustomer`: hidden `aktifBaru=false` + field alasan WAJIB
-    (minLength 3) → `actionStatusCustomer`; dipicu `?nonaktif=<id>`.
-  - `FormAktifkanCustomer`: tombol inline di baris tabel, hidden
-    `aktifBaru=true` (alasan opsional) → `actionStatusCustomer`.
-- `BadgeStatus` (primitives.tsx) yang terlewat dari commit vendors 110df3e
-  kini sudah ter-commit (37a3a72).
+### 3. `src/app/master/charge-codes/page.tsx` + `form.tsx` (pola SESI C)
+- page.tsx server component: `requireUser()`, `daftarChargeCode(db)`,
+  `export const dynamic = "force-dynamic"`, searchParams `?edit=<kode>` /
+  `?nonaktif=<kode>` dicocokkan via `c.kode` (PK TEXT).
+- form.tsx client component, semua action dibungkus `useActionState`;
+  sukses → `router.push("/master/charge-codes")` + `router.refresh()`.
+- Keistimewaan WAJIB yang ditegakkan:
+  1. **kode immutable**: pada FormUbahChargeCode input kode `disabled`
+     (tanpa atribut name, tidak ikut submit); kode dikirim lewat
+     `<input type="hidden" name="kode">` karena `actionUbahChargeCode`
+     lookup via `fd.get("kode")`. Server tetap menolak perubahan kode
+     (ubahChargeCode: "Kode biaya tidak dapat diubah.").
+  2. **segmentScope**: `<select>` DOM|EXIM|BOTH di kedua form (buat default
+     BOTH; ubah defaultValue=baris).
+  3. **kategori FIXED|OPSIONAL**: default OPSIONAL untuk kode baru.
+     FormBuat memakai checkbox `kategoriFixed` TANPA defaultChecked
+     ("Tandai sebagai kategori FIXED (eksplisit; tanpa centang = OPSIONAL)").
+     FormUbah menampilkan checkbox sama dengan `defaultChecked={kategori === "FIXED"}`.
+     Tidak ada jalan menandai FIXED tanpa sadar.
+  4. **butuhVendor**: checkbox biasa di kedua form.
+  5. **status**: Nonaktifkan via `?nonaktif=` → FormNonaktifChargeCode
+     (hidden id=kode, aktifBaru="false", alasan required minLength 3 —
+     ubahStatusAktif menolak tanpa alasan); Aktifkan = tombol inline
+     FormAktifkanChargeCode (aktifBaru="true"). Keduanya memanggil
+     `actionStatusChargeCode` (nama PERSIS; actionUbahStatusChargeCode
+     tidak ada). `ubahStatusAktif("CHARGE_CODE", id, ...)` menerima `kode`
+     sebagai id (PK TEXT; entitas_id audit tetap null).
 
-### Gate (semua hijau, hasil literal)
-```
-$ pnpm tsc --noEmit
-(exit 0, tanpa output error)
+### 4. Kolom yang TIDAK dirender di form UI (ada di schema chargeCodes tapi
+sengaja tidak di-expose karena bukan bagian dari 6 butir WAJIB prompt):
+`chargeLevel`, `chargeDirection`, `appliesTo`, `rateCurrency`, `ratePer`,
+`rateMin`, `calcMode`, `calcMethod`, `calcParam`, `calcBasis`, `calcRounding`,
+`rateStep`, `calcTable`, `basisQty`, `minChargeBasis`, `calcScope`,
+`calcTier`, `prorationRule`, `prorationDetail`, `includeInSummary`,
+`defaultGroup`, `defaultSort`, `invoiceLayout`, `showRateToCustomer`.
+Bila sesi berikutnya butuh, polanya: tambah field di form + baca
+FormData di actionUbahChargeCode (server sudah menerima field-field itu
+lewat ChargeCodeInput).
 
-$ pnpm biome check src/app/master/customers src/components/master
-Checked 48 files. No fixes applied. / Checked 2 files. No fixes applied.
-(exit 0)
+## Yang dikerjakan SESI C (vendors/customers, §10.3)
+1. `ubahStatusAktif()` di `src/lib/master-data/index.ts` — soft delete:
+   set `aktif=false` + `alasanNonaktif` (WAJIB, non-blank) pada VENDOR /
+   CUSTOMER / SHIP_LINE / PORT; entitas lain menolak
+   ("...belum didukung — gunakan ubah untuk edit."). Reaktivasi:
+   `aktif=true` + `alasanNonaktif=null`. Entitas dengan FK unik
+   (vendor/customer) DITOLAK nonaktif bila masih dirujuk di jobs /
+   job_items / vendor_payments / receipt_payments ("...masih dirujuk...").
+   Audit aksi UPDATE (entitas_id = baris.id) dan DELETE.
+2. `actionStatusVendor` / `actionStatusCustomer` di
+   `src/lib/actions/master.ts` — baca `id`, `aktifBaru`, `alasan`;
+   revalidatePath halaman terkait.
+3. `src/app/master/vendors/form.tsx` + `customers/form.tsx`:
+   FormBuat / FormUbah / FormNonaktif (reason wajib, `aktifBaru="false"`
+   hidden) / FormAktifkan (aksi inline, `aktifBaru="true"`).
+4. `page.tsx` vendors & customers: searchParams
+   `?edit=<id>` / `?nonaktif=<id>`; tombol "Nonaktifkan" (merah) untuk
+   aktif, tombol "Aktifkan" untuk nonaktif.
 
-$ pnpm vitest run
- Test Files  15 passed (15)
-      Tests  163 passed (163)
-(exit 0)
-```
+## Yang dikerjakan SEBELUMNYA (SESI C awal, ports/ship-lines, §10.2)
+- FormBuat/FormUbah ports & ship-lines di `src/app/master/{ports,ship-lines}/form.tsx`
+  (pola sama: useActionState + router.push/refresh, TombolPill, Batal).
+- `page.tsx` ports & ship-lines: searchParams `?edit=<id>`;
+  `sedangEdit = daftar.find(x => x.id === Number(edit))`.
 
-## INSTRUKSI SESI BERIKUTNYA — charge-codes + hub
+## Catatan teknis untuk sesi berikutnya
 
-1. Kerjakan **charge-codes** lalu **hub master** mengikuti pola PERSIS sama
-   dengan vendors/customers (jangan bikin pola baru). Template:
-   `src/app/master/vendors/` dan `src/app/master/customers/`.
-2. Tambahkan `actionBuatChargeCode` dsb. + fungsi lib `buatChargeCode`/
-   `ubahChargeCode` di `src/lib/master-data` dengan pola yang sama:
-   assertCan + transaction + writeAudit (1 baris per mutasi).
-3. Gate wajib sebelum commit: `pnpm tsc --noEmit`, `pnpm vitest run`,
-   `pnpm biome check` — semua hijau, tempel hasil literal.
-4. Jangan lupa sertakan semua file primitive yang dipakai dalam commit.
+### Pola form yang harus ditiru
+- Semua form client component: `useActionState` membungkus server action;
+  sukses → `router.push("/master/<entitas>")` + `router.refresh()`; hasil
+  gagal dirender via `PesanHasil`.
+- Field: primitives `Field`, `kelasInput`, `kelasTombolSekunder`, `TombolPill`,
+  `PesanHasil`, `BadgeStatus`, `HalamanJudul` (semua dari
+  `src/components/master/primitives.tsx`).
+- FormNonaktif: hidden `id` + `aktifBaru="false"` + input `alasan` required.
+- FormAktifkan: form kecil inline POST `id` + `aktifBaru="true"`.
+- Link: `href={`/master/<entitas>?edit=${encodeURIComponent(x.id)}`}`.
 
-## Fakta pendukung (tetap berlaku)
+### Nama fungsi / kolom PERSIS (jangan tebak)
+- Master-data: `daftarChargeCode(db)`, `buatChargeCode(db, user, input)`,
+  `ubahChargeCode(db, user, input)`, `ubahStatusAktif(db, user, entitas, id, {aktif, alasan})`,
+  `CHARGE_CATEGORIES`, `SEGMENT_SCOPES`.
+- Server actions (`src/lib/actions/master.ts`): `actionBuatChargeCode`,
+  `actionUbahChargeCode` (FormData field: kode + keterangan, nameId,
+  category, defaultLeg, segmentScope, kategoriFixed, defaultReimburse,
+  isAtCostDefault, isTaxable, pph23Applicable, butuhVendor),
+  `actionStatusChargeCode` (FormData: id=kode, aktifBaru, alasan).
+  `actionUbahStatusChargeCode` TIDAK ADA — namanya actionStatusChargeCode.
+- Charge codes lookup pakai KODE (bukan id): page.tsx cocokkan `c.kode === edit`.
 
-- Validasi lib: `buatCustomer`, `ubahCustomer`, `ubahStatusAktif` (shared;
-  MENOLAK `aktifBaru=false` tanpa alasan). Dedup nama via `cariMirip`
-  (src/lib/similarity) — return `miripDengan` saat skor > threshold.
-- Primitif UI di `src/components/master/primitives.tsx`: `HalamanJudul`,
-  `PeringatanMirip`, `BadgeStatus`, `PesanHasil`, `Field`, `TombolPill`,
-  `kelasInput`, `kelasTombolSekunder`; pola dialog searchParams (tanpa
-  komponen FormNonaktif generik).
-- Rute: `/master/vendors` ✅, `/master/customers` ✅,
-  `/master/charge-codes` (berikutnya), `/master/rate-cards`.
-- JANGAN pakai `autoFocus` (lint a11y noAutofocus).
+### Gate wajib sebelum commit (semua harus hijau)
+1. `pnpm tsc --noEmit` (mesin ini: pnpm 9.12.0)
+2. `pnpm vitest run`
+3. `pnpm biome check` (abaikan warnings pre-existing scripts/, asal 0 errors)
 
-## State terakhir repositori
-- HEAD: `37a3a72` (BadgeStatus). Working tree bersih.
-- Tests terakhir hijau: 15 files / 163 tests passed.
+## Sisa Irisan 3 — SESI BERIKUTNYA (terakhir, biasanya kecil)
+1. **§10.1 /master/page.tsx (hub)** — grid/link ke 5 halaman master
+   (ports, ship-lines, vendors, customers, charge-codes). Cek dulu apakah
+   `src/app/master/layout.tsx` atau `src/app/layout.tsx` sudah ada nav
+   /master; bila ada, cukup hub sederhana.
+
+## Lampiran hasil gate literal SESI D
+- `pnpm tsc --noEmit` → `TSC_EXIT=0` (tanpa output error).
+- `pnpm vitest run`:
+  ```
+   ✓ tests/unit/money.property.test.ts (29 tests) 380ms
+   ✓ tests/unit/job-number-romawi.test.ts (10 tests) 443ms
+   ✓ tests/unit/tax.test.ts (19 tests) 453ms
+   ✓ tests/unit/similarity.test.ts (14 tests) 483ms
+   ✓ tests/unit/terbilang.test.ts (17 tests) 520ms
+   ✓ tests/unit/money.test.ts (23 tests) 523ms
+   ✓ tests/unit/costing.test.ts (18 tests) 532ms
+   ✓ tests/integration/job-sequence.integration.test.ts (4 tests) 575ms
+   ✓ tests/unit/audit.test.ts (7 tests) 548ms
+   ✓ tests/golden/invoice-tax.golden.test.ts (8 tests) 1151ms
+   ✓ tests/golden/summary-2026.golden.test.ts (2 tests) 1173ms
+   ✓ tests/golden/job-costing.golden.test.ts (5 tests) 1200ms
+   ✓ tests/integration/master-data.integration.test.ts (3 tests) 1251ms
+   ✓ tests/e2e/smoke.spec.ts (2 tests) 1803ms
+   ✓ tests/e2e/auth.spec.ts (2 tests) 4590ms
+
+   Test Files  15 passed (15)
+        Tests  163 passed (163)
+  ```
+  `VITEST_EXIT=0`
+- `pnpm biome check .` → `Checked 65 files in 27ms. No fixes applied.` /
+  `Found 8 warnings.` / `BIOME_EXIT=0` (semua warnings pre-existing di
+  scripts/seed.ts, scripts/check-seed.ts, scripts/backfill-sequence-counters.ts,
+  scripts/check-sequence.ts).
