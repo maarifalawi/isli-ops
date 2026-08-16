@@ -489,7 +489,18 @@ export const chargeLines = pgTable(
     vendorId: uuid("vendor_id").references(() => vendors.id),
     keterangan: text("keterangan"),
 
-    /** Perkiraan saat job dibuat. */
+    /*
+     * Nominal JUAL (selling) baris ini — Irisan 4b. BIGINT rupiah bulat, pola
+     * sama dengan pencadangan_idr/actual_idr (ADR-0002). Default 0 supaya
+     * ADD COLUMN aman pada baris lama. Sisi BUYING tetap pencadangan_idr
+     * (perkiraan) + actual_idr (realisasi) yang sudah ada.
+     *
+     * TIDAK ADA konversi kurs di sini (itu Irisan 4c). currency di bawah hanya
+     * penanda tampilan; angka disimpan apa adanya sesuai currency-nya.
+     */
+    sellingIdr: bigint("selling_idr", { mode: "bigint" }).notNull().default(sql`0`),
+
+    /** Perkiraan saat job dibuat (sisi BUYING). */
     pencadanganIdr: bigint("pencadangan_idr", { mode: "bigint" })
       .notNull()
       .default(sql`0`),
@@ -505,11 +516,60 @@ export const chargeLines = pgTable(
     ),
 
     isReimburse: boolean("is_reimburse").notNull().default(false),
+
+    /*
+     * R4.3 at-cost / reimburse bermargin nol. Kalau true, selling WAJIB sama
+     * dengan buying (pencadangan). Ditegakkan DUA lapis: aplikasi (pesan ramah,
+     * src/lib/charge-line) DAN CHECK ck_charge_line_at_cost di bawah (backstop),
+     * pola yang sama seperti R10 (validasiLeg + ck_legs). Default false (aditif
+     * aman); form menyalin dari charge_codes.is_at_cost_default.
+     */
+    isAtCost: boolean("is_at_cost").notNull().default(false),
+
+    /*
+     * Leg yang membebani baris ini (R10): 1 trucking, 2 freight, 3 dooring.
+     * NULLABLE — baris lama & biaya lintas-leg boleh kosong. CHECK di bawah
+     * membatasi ke {1,2,3}. Kolom `leg` di charge_lines ini yang di Irisan 4a
+     * belum ada; ditambahkan sekarang bersama constraint-nya.
+     */
+    leg: smallint("leg"),
+
+    /*
+     * Penanda mata uang TAMPILAN (IDR|USD). Konvensi repo: TEXT + CHECK, bukan
+     * varchar bebas (.clinerules/06 "Enum → TEXT + CHECK"). Tidak ada konversi
+     * di 4b — nilai disimpan apa adanya. Default IDR.
+     */
+    currency: text("currency").notNull().default("IDR"),
+
     urutan: integer("urutan").notNull().default(0),
+
+    // ── jejak (Irisan 4b) ──────────────────────────────────────────────────
+    /** Pembuat baris. Nullable supaya ADD COLUMN aman untuk baris lama. */
+    createdBy: uuid("created_by").references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+    /** Soft delete — baris tidak pernah dihapus keras (simpan 10 tahun). */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
   (table) => ({
     idxJob: index("idx_charge_job").on(table.jobId),
     idxVendor: index("idx_charge_vendor").on(table.vendorId),
+
+    /* R10 — leg baris hanya boleh 1, 2, 3, atau kosong. */
+    ckLeg: check("ck_charge_line_leg", sql`"leg" IS NULL OR "leg" IN (1, 2, 3)`),
+
+    /* Mata uang tampilan terbatas IDR|USD (tanpa konversi di 4b). */
+    ckCurrency: check("ck_charge_line_currency", sql`"currency" IN ('IDR', 'USD')`),
+
+    /*
+     * R4.3 backstop: baris at-cost WAJIB selling = buying (pencadangan).
+     * Baris lama (is_at_cost=false) otomatis lolos. Ini mustahil ditembus
+     * lewat import atau peran mana pun — sama semangatnya dengan ck_legs.
+     */
+    ckAtCost: check(
+      "ck_charge_line_at_cost",
+      sql`NOT "is_at_cost" OR "selling_idr" = "pencadangan_idr"`,
+    ),
   }),
 );
 

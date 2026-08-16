@@ -24,11 +24,16 @@ import { auditLog } from "@/db/schema/index";
  * update/delete terhadap auditLog), dan REVOKE menyusul bersama setup role DB.
  */
 
-/** Aksi mutasi yang dicatat ke audit_log (RENCANA §4). */
-export const AKSI_AUDIT = ["CREATE", "EDIT", "NONAKTIFKAN", "AKTIFKAN"] as const;
+/**
+ * Aksi mutasi yang dicatat ke audit_log (RENCANA §4).
+ *
+ * "HAPUS" ditambahkan Irisan 4b: soft delete charge line (set deleted_at),
+ * bukan DELETE keras. Alasan WAJIB, sama seperti NONAKTIFKAN.
+ */
+export const AKSI_AUDIT = ["CREATE", "EDIT", "NONAKTIFKAN", "AKTIFKAN", "HAPUS"] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
-/** Entitas yang diaudit (RENCANA §4; "JOB" ditambahkan Irisan 4a). */
+/** Entitas yang diaudit (RENCANA §4; "JOB" Irisan 4a; "CHARGE_LINE" Irisan 4b). */
 export const ENTITAS_AUDIT = [
   "CUSTOMER",
   "VENDOR",
@@ -36,6 +41,7 @@ export const ENTITAS_AUDIT = [
   "SHIP_LINE",
   "CHARGE_CODE",
   "JOB",
+  "CHARGE_LINE",
 ] as const;
 
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
@@ -57,7 +63,7 @@ export interface AuditInput {
   sebelum?: unknown;
   /** Baris SESUDAH mutasi (objek penuh, tanpa filter). null/undefined untuk NONAKTIFKAN bila memakai sesudah=null? Tidak -- selalu isi. */
   sesudah?: unknown;
-  /** WAJIB untuk NONAKTIFKAN; opsional lainnya. */
+  /** WAJIB untuk NONAKTIFKAN & HAPUS; opsional lainnya. */
   alasan?: string | null;
 }
 
@@ -83,9 +89,10 @@ function toJsonText(nilai: unknown): string | null {
  * audit gagal → mutasi ikut rollback.
  */
 export async function writeAudit(txOrDb: DbOrTx, input: AuditInput) {
-  if (input.aksi === "NONAKTIFKAN" && !input.alasan?.trim()) {
-    throw new Error("writeAudit: alasan WAJIB untuk aksi NONAKTIFKAN.");
+  if ((input.aksi === "NONAKTIFKAN" || input.aksi === "HAPUS") && !input.alasan?.trim()) {
+    throw new Error(`writeAudit: alasan WAJIB untuk aksi ${input.aksi}.`);
   }
+
   return txOrDb.insert(auditLog).values({
     userId: input.userId,
     aksi: input.aksi,

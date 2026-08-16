@@ -15,6 +15,7 @@ import { db } from "@/db/index";
 import { daftarJob } from "@/lib/job/index";
 import { daftarCustomer } from "@/lib/master-data/index";
 import { requireUser } from "@/lib/session/index";
+import Link from "next/link";
 import { FormBuatJob } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -78,8 +79,13 @@ export default async function HalamanJobs() {
             ) : (
               jobs.map((j) => (
                 <tr key={j.id} className="border-b border-divider">
-                  <td className="px-3 py-2 text-body tabular-nums">{j.jobNo}</td>
+                  <td className="px-3 py-2 text-body tabular-nums">
+                    <Link href={`/jobs/${j.id}`} className="text-accent">
+                      {j.jobNo}
+                    </Link>
+                  </td>
                   <td className="px-3 py-2 text-body">{j.seqScope}</td>
+
                   <td className="px-3 py-2 text-body">
                     {customerNama.get(j.customerId) ?? "—"}
                   </td>
