@@ -40,10 +40,14 @@ let userId = "";
 let customerId = "";
 let vendorId = "";
 let jobId = "";
+/** Job kedua yang PUNYA kurs USD (Irisan 4c). 18.300 → kurs_x100 = 1_830_000. */
+let jobUsdId = "";
+const KURS_X100 = 1_830_000n;
 
 async function bersihkan() {
   await db.delete(auditLog).where(and(eq(auditLog.entitas, "CHARGE_LINE")));
   await db.delete(chargeLines).where(eq(chargeLines.jobId, jobId));
+  if (jobUsdId) await db.delete(chargeLines).where(eq(chargeLines.jobId, jobUsdId));
   await db.delete(jobs).where(eq(jobs.tahun, TEST_YEAR));
   await db.delete(jobSequence).where(eq(jobSequence.tahun, TEST_YEAR));
 }
@@ -89,6 +93,23 @@ describe("charge line CRUD (integrasi DB)", { timeout: 30_000 }, () => {
       })
       .returning({ id: jobs.id });
     jobId = job?.id ?? "";
+
+    // Job EXIM ber-kurs untuk uji konversi USD (Irisan 4c, R8.1/R8.2).
+    const [jobUsd] = await db
+      .insert(jobs)
+      .values({
+        seqScope: "EXP",
+        tahun: TEST_YEAR,
+        bulan: 6,
+        running: 1,
+        jobNo: "ISLI-96.06-001 (EXP)",
+        customerId,
+        legFreight: true,
+        makerId: userId,
+        kursX100: KURS_X100,
+      })
+      .returning({ id: jobs.id });
+    jobUsdId = jobUsd?.id ?? "";
   });
 
   afterAll(async () => {
@@ -283,5 +304,105 @@ describe("charge line CRUD (integrasi DB)", { timeout: 30_000 }, () => {
     if (!buat.ok) return;
     const hapus = await hapusChargeLine(db, owner(), buat.data.id, "   ");
     expect(hapus.ok).toBe(false);
+  });
+
+  // ── Irisan 4c — konversi kurs USD→IDR ──────────────────────────────────────
+
+  it("baris USD dikonversi ke IDR pakai kurs job (USD 510 × 18.300 = 9.333.000)", async () => {
+    const hasil = await createChargeLine(db, owner(), {
+      jobId: jobUsdId,
+      chargeCode: KODE_WAJIB,
+      vendorId,
+      currency: "USD",
+      sellingUsd: 510,
+      pencadanganUsd: 500,
+      leg: 2,
+    });
+    expect(hasil.ok).toBe(true);
+    if (!hasil.ok) return;
+
+    const [row] = await db
+      .select()
+      .from(chargeLines)
+      .where(eq(chargeLines.id, hasil.data.id));
+    // *_usd disimpan native (utuh).
+    expect(row?.sellingUsd).toBe(510n);
+    expect(row?.pencadanganUsd).toBe(500n);
+    // *_idr = hasil konversi ROUND (R8.2): 510×18.300=9.333.000; 500×18.300=9.150.000.
+    expect(row?.sellingIdr).toBe(9_333_000n);
+    expect(row?.pencadanganIdr).toBe(9_150_000n);
+    expect(row?.currency).toBe("USD");
+  });
+
+  it("baris USD DITOLAK kalau job belum punya kurs (R8.1)", async () => {
+    // jobId (DOM) sengaja tidak diberi kurs.
+    const hasil = await createChargeLine(db, owner(), {
+      jobId,
+      chargeCode: KODE_BEBAS,
+      currency: "USD",
+      sellingUsd: 100,
+      pencadanganUsd: 100,
+    });
+    expect(hasil.ok).toBe(false);
+    if (!hasil.ok) expect(hasil.error).toContain("kurs");
+  });
+
+  it("baris USD at-cost seimbang (native) DITERIMA, konversi tetap seimbang", async () => {
+    const hasil = await createChargeLine(db, owner(), {
+      jobId: jobUsdId,
+      chargeCode: KODE_BEBAS,
+      currency: "USD",
+      sellingUsd: 200,
+      pencadanganUsd: 200,
+      isAtCost: true,
+    });
+    expect(hasil.ok).toBe(true);
+    if (!hasil.ok) return;
+    const [row] = await db
+      .select()
+      .from(chargeLines)
+      .where(eq(chargeLines.id, hasil.data.id));
+    // ck_charge_line_at_cost tetap valid karena konversi memakai satu kurs.
+    expect(row?.sellingIdr).toBe(row?.pencadanganIdr);
+    expect(row?.sellingIdr).toBe(3_660_000n); // 200 × 18.300
+  });
+
+  it("baris USD at-cost timpang (native) DITOLAK (R4.3 native)", async () => {
+    const hasil = await createChargeLine(db, owner(), {
+      jobId: jobUsdId,
+      chargeCode: KODE_BEBAS,
+      currency: "USD",
+      sellingUsd: 210,
+      pencadanganUsd: 200,
+      isAtCost: true,
+    });
+    expect(hasil.ok).toBe(false);
+    if (!hasil.ok) expect(hasil.error).toContain("R4.3");
+  });
+
+  it("baris IDR yang mengisi nilai USD DITOLAK (ck_charge_line_usd_native cermin)", async () => {
+    const hasil = await createChargeLine(db, owner(), {
+      jobId,
+      chargeCode: KODE_BEBAS,
+      currency: "IDR",
+      sellingIdr: 1_000_000,
+      pencadanganIdr: 0,
+      sellingUsd: 5,
+    });
+    expect(hasil.ok).toBe(false);
+  });
+
+  it("DB menolak baris IDR dengan *_usd terisi (backstop ck_charge_line_usd_native)", async () => {
+    // Lewati validasi aplikasi dengan INSERT langsung → constraint DB harus menolak.
+    await expect(
+      db.insert(chargeLines).values({
+        jobId,
+        chargeCode: KODE_BEBAS,
+        sellingIdr: 0n,
+        pencadanganIdr: 0n,
+        currency: "IDR",
+        sellingUsd: 5n,
+      }),
+    ).rejects.toThrow();
   });
 });

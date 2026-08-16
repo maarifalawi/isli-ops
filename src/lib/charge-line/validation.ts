@@ -18,17 +18,26 @@
 export const CURRENCIES = ["IDR", "USD"] as const;
 export type Currency = (typeof CURRENCIES)[number];
 
-/** Field charge line yang divalidasi (semua uang bigint rupiah bulat). */
+/** Field charge line yang divalidasi (semua uang bigint bulat). */
 export interface ChargeLineFields {
-  /** Nominal jual. */
+  /** Nominal jual dalam IDR. Untuk baris USD ini nilai HASIL konversi (boleh 0 saat validasi murni, konversi terjadi di lapis DB). */
   sellingIdr: bigint;
-  /** Sisi buying (perkiraan). */
+  /** Sisi buying (perkiraan) dalam IDR. */
   pencadanganIdr: bigint;
   /** R4.3 — kalau true, selling wajib = pencadangan. */
   isAtCost: boolean;
   /** R10 — 1|2|3 atau null. */
   leg: number | null;
   currency: string;
+  /*
+   * Irisan 4c — nilai NATIVE USD (utuh, bukan sen). WAJIB untuk currency='USD',
+   * HARUS null/undefined untuk currency='IDR'. Validasi at-cost R4.3 dan
+   * non-negatif dilakukan pada mata uang NATIVE supaya pesan errornya sesuai
+   * dengan angka yang user ketik, bukan hasil konversi.
+   */
+  sellingUsd?: bigint | null;
+  pencadanganUsd?: bigint | null;
+  actualUsd?: bigint | null;
 }
 
 export type HasilValidasi = { ok: true } | { ok: false; error: string };
@@ -55,6 +64,55 @@ export function isAtCostSeimbang(f: {
 }): boolean {
   if (!f.isAtCost) return true;
   return f.sellingIdr === f.pencadanganIdr;
+}
+
+/**
+ * Irisan 4c — konsistensi mata uang native. Dikembalikan sebagai HasilValidasi
+ * supaya pesan errornya spesifik (bahasa Indonesia, menyebut tindakan).
+ *
+ * Aturan:
+ *   currency='USD' → sellingUsd & pencadanganUsd WAJIB terisi; ketiganya (bila
+ *     ada) non-negatif; kalau at-cost, selling_usd = pencadangan_usd (R4.3 pada
+ *     mata uang native — bukan hasil konversi).
+ *   currency='IDR' → ketiga kolom *_usd HARUS kosong (null/undefined). Cermin
+ *     dari CHECK ck_charge_line_usd_native di DB.
+ */
+export function validasiCurrencyNative(f: ChargeLineFields): HasilValidasi {
+  const s = f.sellingUsd ?? null;
+  const p = f.pencadanganUsd ?? null;
+  const a = f.actualUsd ?? null;
+
+  if (f.currency === "IDR") {
+    if (s !== null || p !== null || a !== null) {
+      return {
+        ok: false,
+        error:
+          "Baris IDR tidak boleh punya nilai USD. Ubah mata uang ke USD, atau " +
+          "kosongkan kolom USD.",
+      };
+    }
+    return { ok: true };
+  }
+
+  // currency === "USD"
+  if (s === null || p === null) {
+    return {
+      ok: false,
+      error: "Baris USD wajib mengisi nilai jual dan nilai beli dalam USD.",
+    };
+  }
+  if (s < 0n || p < 0n || (a !== null && a < 0n)) {
+    return { ok: false, error: "Nilai USD tidak boleh negatif." };
+  }
+  if (f.isAtCost && s !== p) {
+    return {
+      ok: false,
+      error:
+        "Baris at-cost wajib punya nilai jual USD sama persis dengan nilai beli " +
+        "USD (R4.3). Kalau memang ada margin, jangan tandai sebagai at-cost.",
+    };
+  }
+  return { ok: true };
 }
 
 /**

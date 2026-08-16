@@ -29,6 +29,13 @@
       "when": 1786846961071,
       "tag": "0003_iris4b_charge_line",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1786870673872,
+      "tag": "0004_iris4c_charge_line_usd",
+      "breakpoints": true
     }
   ]
 }
