@@ -53,8 +53,10 @@ async function main(): Promise<void> {
       RETURNING inv_type, issue_year, issue_month, last_running
     `;
 
+    // biome-ignore lint/suspicious/noConsoleLog: CLI script output
     console.log("=== job_sequence (%d baris) ===", jobs.length);
     console.table(jobs);
+    // biome-ignore lint/suspicious/noConsoleLog: CLI script output
     console.log("=== invoice_sequence (%d baris) ===", invoices.length);
     console.table(invoices);
 
@@ -65,8 +67,10 @@ async function main(): Promise<void> {
     const allInv = await sql`
       SELECT * FROM invoice_sequence ORDER BY inv_type, issue_year, issue_month
     `;
+    // biome-ignore lint/suspicious/noConsoleLog: CLI script output
     console.log("--- verifikasi SELECT * job_sequence ---");
     console.table(allJobs);
+    // biome-ignore lint/suspicious/noConsoleLog: CLI script output
     console.log("--- verifikasi SELECT * invoice_sequence ---");
     console.table(allInv);
   } finally {

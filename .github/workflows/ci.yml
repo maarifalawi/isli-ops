@@ -162,10 +162,19 @@ jobs:
         run: pnpm db:seed
 
       - name: Install browser Playwright
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: E2E
         run: pnpm test:e2e
+        env:
+          # Nilai boneka — server cukup bisa boot untuk spec yang tidak butuh
+          # login Supabase asli (auth.spec: redirect ke /login). Spec yang
+          # butuh kredensial (smoke, master-crud) skip sendiri tanpa
+          # E2E_TEST_* — pola yang sama dengan job "Build produksi" di bawah.
+          # Kalau nanti secrets Supabase + E2E_TEST_* tersedia, ganti dengan
+          # secrets asli agar spec login ikut berjalan.
+          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
 
       - name: Simpan laporan kalau gagal
         if: failure()

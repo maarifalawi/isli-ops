@@ -17,6 +17,10 @@ import { type Page, expect, test } from "@playwright/test";
 const email = process.env.E2E_TEST_EMAIL ?? "";
 const password = process.env.E2E_TEST_PASSWORD ?? "";
 
+// Tanpa kredensial e2e (mis. di CI yang tidak punya secrets Supabase),
+// suite di-skip, bukan digagalkan — sama seperti smoke.spec.ts.
+const uji = email !== "" && password !== "" ? test : test.skip;
+
 // Login via UI sama seperti manusia: isi form, klik Masuk.
 async function login(page: Page): Promise<void> {
   await page.goto("/login");
@@ -26,7 +30,7 @@ async function login(page: Page): Promise<void> {
   await expect(page).toHaveURL("/");
 }
 
-test("STAFF melihat data master read-only tanpa tombol tambah", async ({ page }) => {
+uji("STAFF melihat data master read-only tanpa tombol tambah", async ({ page }) => {
   await login(page);
   await page.goto("/master");
   // Sesuai snapshot Playwright halaman /master (diambil dari kegagalan run

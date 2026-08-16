@@ -15,6 +15,7 @@ async function main() {
 
   const jobs = await db.execute(sql`select count(*)::int as n from jobs`);
 
+  // biome-ignore lint/suspicious/noConsoleLog: CLI script output
   console.log(JSON.stringify({ users: rows, jobs: Array.from(jobs) }, null, 2));
   process.exit(0);
 }
