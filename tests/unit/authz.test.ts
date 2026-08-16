@@ -98,3 +98,32 @@ describe("Irisan 5 - izin transisi state machine (Q-IRIS5-4)", () => {
     expect(can("STAFF", "job:unlock")).toBe(false);
   });
 });
+
+describe("Irisan 6 - izin invoice customer (RBAC.md)", () => {
+  it("invoice:create dimiliki ketiga peran (draft bisa disiapkan staf)", () => {
+    expect(can("OWNER", "invoice:create")).toBe(true);
+    expect(can("MANAGER", "invoice:create")).toBe(true);
+    expect(can("STAFF", "invoice:create")).toBe(true);
+  });
+
+  it("invoice:issue hanya OWNER + MANAGER; STAFF DITOLAK (RBAC ✗)", () => {
+    expect(can("OWNER", "invoice:issue")).toBe(true);
+    expect(can("MANAGER", "invoice:issue")).toBe(true);
+    expect(can("STAFF", "invoice:issue")).toBe(false);
+    expect(() => assertCan("STAFF", "invoice:issue")).toThrow(/tidak berwenang/);
+  });
+
+  it("invoice:void HANYA OWNER - MANAGER + STAFF DITOLAK (konflik #1, RBAC ✗)", () => {
+    expect(can("OWNER", "invoice:void")).toBe(true);
+    expect(can("MANAGER", "invoice:void")).toBe(false);
+    expect(can("STAFF", "invoice:void")).toBe(false);
+    expect(() => assertCan("MANAGER", "invoice:void")).toThrow(/tidak berwenang/);
+    expect(() => assertCan("STAFF", "invoice:void")).toThrow(/tidak berwenang/);
+  });
+
+  it("payment:record dimiliki ketiga peran (semua boleh mencatat pembayaran)", () => {
+    expect(can("OWNER", "payment:record")).toBe(true);
+    expect(can("MANAGER", "payment:record")).toBe(true);
+    expect(can("STAFF", "payment:record")).toBe(true);
+  });
+});

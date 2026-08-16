@@ -56,6 +56,13 @@ export const invoiceStatusEnum = pgEnum("invoice_status", [
   "DRAFT",
   "TERBIT",
   "TERKIRIM",
+  /*
+   * Irisan 6 (keputusan user 17 Agu 2026, konflik #2): PARTIALLY_PAID jadi
+   * state PROPER di enum — bukan derivasi dari payment_in (terlalu kompleks
+   * dan rawan salah). Mapping dokumen: SENT → TERKIRIM, PARTIALLY_PAID →
+   * TERBAYAR_SEBAGIAN.
+   */
+  "TERBAYAR_SEBAGIAN",
   "LUNAS",
   "BATAL",
 ]);
@@ -711,18 +718,48 @@ export const customerInvoices = pgTable(
      * reset di bulan apa.
      */
     issueMonth: smallint("issue_month").notNull(),
-    running: integer("running").notNull(),
-    invoiceNo: text("invoice_no").notNull(),
+    /*
+     * Irisan 6: DRAFT dibuat TANPA nomor — dialokasikan allocateInvoiceNumber
+     * di dalam transaksi issue. Sebelum TERBIT, invoiceNo & running NULL.
+     *
+     * Kenapa running NULLABLE, bukan default 0: UNIQUE Postgres memperlakukan
+     * NULL sebagai tidak sama dengan apa pun — banyak DRAFT sekaligus di bulan
+     * terbit yang sama tidak menabrak uq_inv. Begitu issue mengisi running,
+     * constraint aktif dan menjaga keunikan nomor terbit.
+     */
+    running: integer("running"),
+    invoiceNo: text("invoice_no"),
 
-    issueDate: date("issue_date").notNull(),
-    dueDate: date("due_date").notNull(),
+    /*
+     * Irisan 6 (keputusan user 17 Agu 2026): DRAFT dibuat TANPA nomor & tanpa
+     * tanggal — semuanya diisi saat issue. Kolom sengaja NULLABLE; angka beku
+     * (I-INV-1) hanya berlaku mulai TERBIT.
+     */
+    issueDate: date("issue_date"),
+    /** R9.2/Q07: diisi MANUAL oleh Finance saat issue — bukan hasil rumus. */
+    dueDate: date("due_date"),
 
-    subTotalIdr: bigint("sub_total_idr", { mode: "bigint" }).notNull(),
+    /*
+     * Angka DIBEKUKAN saat issue (I-INV-1). Default 0 supaya INSERT DRAFT
+     * aman — status DRAFT menandakan angka belum dihitung (pola jobs.selling_idr).
+     */
+    subTotalIdr: bigint("sub_total_idr", { mode: "bigint" }).notNull().default(sql`0`),
     reimburseIdr: bigint("reimburse_idr", { mode: "bigint" }).notNull().default(sql`0`),
-    dppIdr: bigint("dpp_idr", { mode: "bigint" }).notNull(),
-    ppnIdr: bigint("ppn_idr", { mode: "bigint" }).notNull(),
+    dppIdr: bigint("dpp_idr", { mode: "bigint" }).notNull().default(sql`0`),
+    /** Tarif PPN saat issue (basis poin; 110 = 1,1%) — audit trail R3.1. */
+    ppnRateBp: smallint("ppn_rate_bp").notNull().default(110),
+    ppnIdr: bigint("ppn_idr", { mode: "bigint" }).notNull().default(sql`0`),
+    /*
+     * R3.5/Q04: SELALU eksplisit dari centang manual Finance. Default false —
+     * JANGAN pernah disimpulkan dari customer/segmen.
+     */
+    pph23Applied: boolean("pph23_applied").notNull().default(false),
     pph23Idr: bigint("pph23_idr", { mode: "bigint" }).notNull().default(sql`0`),
-    grandTotalIdr: bigint("grand_total_idr", { mode: "bigint" }).notNull(),
+    grandTotalIdr: bigint("grand_total_idr", { mode: "bigint" })
+      .notNull()
+      .default(sql`0`),
+    /** Terbilang dihasilkan SAAT issue dan disimpan (ADR-0005 poin 5). */
+    terbilang: text("terbilang"),
 
     /**
      * Versi aturan pajak saat invoice diterbitkan.
@@ -734,6 +771,12 @@ export const customerInvoices = pgTable(
     status: invoiceStatusEnum("status").notNull().default("DRAFT"),
     /** POD harus kembali ke Jakarta sebelum invoice ditagih (R9.4). */
     podDiterimaAt: timestamp("pod_diterima_at", { withTimezone: true }),
+    /** TOP invoice (hari) — disimpan untuk audit (R9.1: DOM 30, EXIM 14). */
+    topDays: integer("top_days"),
+    /** Diisi saat send. Nullable sampai invoice dikirim. */
+    sentDate: date("sent_date"),
+    /** I-INV-4: Invoice Reimburse terpisah — disiapkan, belum dipakai (tunda). */
+    isReimburseInvoice: boolean("is_reimburse_invoice").notNull().default(false),
 
     /*
      * R9.4b -- pengecualian, transkrip 2 (13 Agu 2026): customer terkadang
@@ -744,6 +787,15 @@ export const customerInvoices = pgTable(
     issuedBeforePod: boolean("issued_before_pod").notNull().default(false),
     /** Wajib terisi jika issuedBeforePod true. Bukan createdBy invoice ini. */
     earlyIssueApprovedBy: uuid("early_issue_approved_by").references(() => users.id),
+
+    /** Customer penerima tagihan (denormalisasi dari job untuk query cepat). */
+    customerId: uuid("customer_id")
+      .notNull()
+      .references(() => customers.id),
+    /** Pembuat invoice — jejak siapa yang membuat draft. */
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id),
 
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -764,6 +816,69 @@ export const customerInvoices = pgTable(
       "ck_early_issue_needs_approval",
       sql`(issued_before_pod = false) OR (early_issue_approved_by IS NOT NULL)`,
     ),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Rincian & pembayaran invoice customer — Irisan 6
+// ---------------------------------------------------------------------------
+
+/**
+ * Snapshot rincian invoice per baris — dibekukan saat issue (I-INV-1).
+ *
+ * Baris ini BUKAN referensi hidup ke charge_lines: nilai charge line boleh
+ * berubah (mis. job di-unlock lalu diedit), tapi invoice yang sudah TERBIT
+ * tidak boleh ikut berubah. Karena itu uraian, kode, dan nominal DISALIN saat
+ * issue, bukan di-join.
+ */
+export const invoiceLines = pgTable(
+  "invoice_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => customerInvoices.id, { onDelete: "cascade" }),
+    urutan: integer("urutan").notNull().default(0),
+    chargeCode: text("charge_code").notNull(),
+    keterangan: text("keterangan").notNull(),
+    /** Baris reimburse — tampil di dokumen, keluar dari DPP (R3.2). */
+    isReimburse: boolean("is_reimburse").notNull().default(false),
+    amountIdr: bigint("amount_idr", { mode: "bigint" }).notNull(),
+  },
+  (table) => ({
+    idxInvoice: index("idx_invoice_line_invoice").on(table.invoiceId),
+  }),
+);
+
+/**
+ * Pembayaran masuk atas invoice customer (STATE-MACHINE.md §2 pay_partial /
+ * pay_full). Satu baris = satu peristiwa transfer diterima.
+ *
+ * Status LUNAS/TERBAYAR_SEBAGIAN tetap kolom di customer_invoices (keputusan
+ * konflik #2: state proper); tabel ini jejak peristiwa — total dibayar =
+ * SUM(jumlah), sisa = grand_total − total dibayar. Kalau dua pembayaran
+ * bersamaan berebut transisi pay, guard WHERE status=lama di service hanya
+ * meloloskan satu (pola transisi.ts).
+ */
+export const paymentsIn = pgTable(
+  "payments_in",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    invoiceId: uuid("invoice_id")
+      .notNull()
+      .references(() => customerInvoices.id),
+    /** Nilai peristiwa pembayaran ini. BIGINT rupiah (ADR-0002). */
+    jumlahIdr: bigint("jumlah_idr", { mode: "bigint" }).notNull(),
+    /** Tanggal dana diterima. */
+    tanggal: date("tanggal").notNull(),
+    /** Pencatat pembayaran (audit trail tambahan; utama tetap audit_log). */
+    recordedBy: uuid("recorded_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    idxInvoice: index("idx_payment_in_invoice").on(table.invoiceId),
   }),
 );
 
