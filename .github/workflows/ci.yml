@@ -24,6 +24,35 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+    # Postgres lokal untuk test integrasi (tests/integration/*) yang butuh
+    # DATABASE_URL. Tanpa ini, src/db/index.ts melempar saat di-import dan
+    # `pnpm test` gagal di tahap collection. Pola & versi image SAMA dengan
+    # job e2e di bawah. Ini DB uji sekali pakai, BUKAN Supabase produksi —
+    # jangan taruh kredensial asli di sini.
+    #
+    # CATATAN VERSI: versi Postgres Supabase tidak tertulis di repo (tidak ada
+    # supabase/config.toml; TOOLCHAIN.md hanya menyebut "Supabase Postgres"
+    # tanpa versi). `postgres:16` dipilih agar KONSISTEN dengan job e2e yang
+    # sudah ada — ini ASUMSI selaras CI, bukan versi Supabase terverifikasi.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: isli_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Plain Postgres (bukan pooler). drizzle-kit migrate memakai
+      # DIRECT_URL ?? DATABASE_URL, jadi DATABASE_URL saja cukup.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/isli_test
+
     steps:
       - uses: actions/checkout@v4
 
@@ -43,8 +72,18 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Unit test
+      # Skema DB CI harus sesuai skema terbaru sebelum test integrasi.
+      # Perintah resmi repo (drizzle-kit migrate) — BUKAN db:push/db:generate.
+      - name: Migrasi database uji
+        run: pnpm db:migrate
+
+      # Test integrasi butuh minimal satu user; seed idempoten (onConflictDoNothing).
+      - name: Seed data uji
+        run: pnpm db:seed
+
+      - name: Unit + integrasi test
         run: pnpm test
+
 
       # ---------------------------------------------------------
       # GOLDEN TEST — gerbang rilis.
