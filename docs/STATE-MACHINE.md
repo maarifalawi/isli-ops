@@ -69,24 +69,47 @@
 
 ## 2. Customer Invoice
 
-```
-[DRAFT] ──issue──> [ISSUED] ──send──> [SENT] ────pay_full────> [PAID]
-                       │                 │                        
-                       │                 └──pay_partial──> [PARTIALLY_PAID] ──pay_full──> [PAID]
-                       │
-                       └──cancel──> [CANCELLED]
+> **Mapping nama (Irisan 6, keputusan user 17 Agu 2026 — pola Q-IRIS5-2):**
+> skema database (`invoice_status`) adalah sumber kebenaran.
+>
+> | Dokumen (konseptual) | Skema (`invoice_status`) |
+> |---|---|
+> | ISSUED | TERBIT |
+> | SENT | TERKIRIM |
+> | PARTIALLY_PAID | TERBAYAR_SEBAGIAN *(state proper di enum — konflik #2: bukan derivasi payments_in)* |
+> | PAID | LUNAS |
+> | CANCELLED | BATAL |
+> | DRAFT | DRAFT |
+>
+> **Perbaikan peran (konflik #1, 17 Agu 2026):** "Finance Manager" era dokumen
+> awal → **void = OWNER saja** (`invoice:void`; RBAC/kode menang — konsisten
+> dengan approve_final & unlock = Owner only). "Finance" pada tabel di bawah =
+> OWNER dan MANAGER (STAFF ✗ untuk issue; `invoice:create` & `payment.record`
+> dimiliki O/M/S sesuai RBAC.md).
 
-[SENT] / [PARTIALLY_PAID] ──(jatuh tempo lewat)──> flag OVERDUE (bukan status)
+```
+[DRAFT] ──issue──> [TERBIT] ──send──> [TERKIRIM] ──pay_full──> [LUNAS]
+                        │                  │
+                        │                  └──pay_partial──> [TERBAYAR_SEBAGIAN] ──pay_full──> [LUNAS]
+                        │
+                        └──void──> [BATAL]
+
+[TERKIRIM] / [TERBAYAR_SEBAGIAN] ──(jatuh tempo lewat)──> flag OVERDUE (bukan status)
 ```
 
 | Dari | Aksi | Ke | Siapa | Syarat |
 |---|---|---|---|---|
-| — | `create` | DRAFT | Finance | Job `FINAL` **dan** Proof of Delivery diterima (R9.4) |
-| DRAFT | `issue` | ISSUED | Finance | nomor invoice dialokasikan; angka pajak dibekukan |
-| ISSUED | `send` | SENT | Finance | tanggal kirim dicatat; jatuh tempo dihitung |
-| ISSUED | `cancel` | CANCELLED | Finance Manager | wajib alasan; nomor **tidak** dipakai ulang |
-| SENT | `pay_partial` | PARTIALLY_PAID | Finance | jumlah > 0 dan < sisa |
-| SENT / PARTIALLY_PAID | `pay_full` | PAID | Finance | sisa == 0 |
+| — | `create` | DRAFT | O/M/S (`invoice:create`) | Job `FINAL`; DRAFT **tanpa nomor/tanggal/angka** — semua diisi saat issue (Irisan 6). POD boleh dicatat di draft; disyaratkan saat issue |
+| DRAFT | `issue` | TERBIT | O/M (`invoice:issue`) | POD diterima **atau** jalur R9.4b (izin OWNER ≠ pembuat); due date **manual** (R9.2); nomor dialokasikan; angka pajak + terbilang + snapshot rincian dibekukan (I-INV-1) |
+| DRAFT | `edit` / `delete` | DRAFT / — | O/M/S (`invoice:create`) | hanya sebelum issue; hard delete DRAFT tanpa audit (belum ada peristiwa uang) |
+| TERBIT | `send` | TERKIRIM | O/M (`invoice:issue`) | tanggal kirim dicatat |
+| TERBIT | `void` | BATAL | **OWNER saja** (`invoice:void`) | wajib alasan; nomor **tidak** dipakai ulang |
+| TERKIRIM | `pay_partial` | TERBAYAR_SEBAGIAN | O/M/S (`payment.record`) | jumlah > 0 dan < sisa |
+| TERKIRIM / TERBAYAR_SEBAGIAN | `pay_full` | LUNAS | O/M/S (`payment.record`) | menutup sisa |
+
+> Aksi audit (Irisan 6): `ISSUE` · `SEND` · `PAY_PARTIAL` · `PAY_FULL` · `VOID`
+> (alasan wajib) atas entitas `CUSTOMER_INVOICE`; addendum memakai
+> `APPROVE_ADDENDUM`/`ISSUE` atas `CUSTOMER_INVOICE_ADDENDUM`.
 
 ### Invariant
 

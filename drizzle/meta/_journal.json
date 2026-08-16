@@ -43,6 +43,13 @@
       "when": 1786902298275,
       "tag": "0005_iris5_state_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1786910282420,
+      "tag": "0006_iris6_invoice",
+      "breakpoints": true
     }
   ]
 }

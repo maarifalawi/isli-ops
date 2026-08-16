@@ -56,6 +56,19 @@ export const AKSI_AUDIT = [
   "REQUEST_UNLOCK",
   "UNLOCK_GRANTED",
   "UNLOCK_DENIED",
+  /*
+   * Irisan 6 — aksi invoice customer (STATE-MACHINE.md §2 + keputusan user
+   * 17 Agu 2026): ISSUE (terbit + beku pajak), SEND, PAY_FULL, PAY_PARTIAL,
+   * VOID (batal, wajib alasan). "HAPUS" dipakai untuk hard delete invoice
+   * DRAFT (belum ada nomor — tanpa jejak mutasi uang; keputusan user).
+   * APPROVE_ADDENDUM = persetujuan addendum R16 (Q70: Manager/Owner, ≠ pembuat).
+   */
+  "ISSUE",
+  "SEND",
+  "PAY_FULL",
+  "PAY_PARTIAL",
+  "VOID",
+  "APPROVE_ADDENDUM",
 ] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
@@ -72,6 +85,9 @@ export const ENTITAS_AUDIT = [
   "JOB",
   "CHARGE_LINE",
   "COST_REALLOCATION",
+  /* Irisan 6: invoice customer + addendum R16 + peristiwa pembayaran masuk. */
+  "CUSTOMER_INVOICE",
+  "CUSTOMER_INVOICE_ADDENDUM",
 ] as const;
 
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
@@ -125,7 +141,8 @@ export async function writeAudit(txOrDb: DbOrTx, input: AuditInput) {
       input.aksi === "REALOKASI" ||
       input.aksi === "REJECT" ||
       input.aksi === "REQUEST_UNLOCK" ||
-      input.aksi === "UNLOCK_DENIED") &&
+      input.aksi === "UNLOCK_DENIED" ||
+      input.aksi === "VOID") &&
     !input.alasan?.trim()
   ) {
     throw new Error(`writeAudit: alasan WAJIB untuk aksi ${input.aksi}.`);

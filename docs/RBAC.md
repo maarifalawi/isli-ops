@@ -59,6 +59,14 @@ STAFF      MANAGER          OWNER
 > reject di DIAJUKAN oleh Manager, di DISETUJUI_1 oleh Owner), dan
 > `job:request_unlock` kini terpakai nyata. Nama izin mengikuti KODE
 > (`job:approve_first`); alias lama `job.approve_1` dipensiunkan.
+>
+> **Irisan 6 (17 Agu 2026):** izin invoice kini terpakai nyata di
+> `src/lib/invoice/`: `invoice.draft` (create/edit/hapus DRAFT) O✓M✓S✓,
+> `invoice.issue` (issue/send) O✓M✓S✗, `invoice.void` **OWNER saja**
+> (keputusan konflik #1 — void = aksi uang serius, konsisten approve_final),
+> dan `payment.record` (pay_partial/pay_full) O✓M✓S✓ kini ada di
+> `authz.ACTIONS` + matriks PERMISSIONS. Mapping nama STATE-MACHINE.md §2:
+> "Finance" = OWNER+MANAGER.
 
 
 ---
