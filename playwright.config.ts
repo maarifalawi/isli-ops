@@ -5,7 +5,18 @@ import { defineConfig, devices } from "@playwright/test";
 // membacanya untuk server). Kredensial e2e perlu juga di sisi klien/test,
 // jadi muat di sini tanpa dependensi tambahan — nilai yang sudah ada di
 // environment tidak ditimpa.
-for (const baris of readFileSync(".env.local", "utf8").split(/\r?\n/)) {
+//
+// Di CI file ini tidak ada (kredensial datang dari environment/Secrets), jadi
+// pembacaan dilewati kalau file tidak ada — mencegah crash ENOENT. Di lokal
+// file tetap dimuat seperti biasa.
+let envLocal = "";
+try {
+  envLocal = readFileSync(".env.local", "utf8");
+} catch {
+  // .env.local tidak ada di CI — skip, pakai env CI langsung
+}
+
+for (const baris of envLocal.split(/\r?\n/)) {
   const cocok = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(baris);
   if (!cocok || baris.trimStart().startsWith("#")) continue;
   const nama = cocok[1] ?? "";
