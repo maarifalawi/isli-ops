@@ -28,14 +28,16 @@ import { auditLog } from "@/db/schema/index";
 export const AKSI_AUDIT = ["CREATE", "EDIT", "NONAKTIFKAN", "AKTIFKAN"] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
-/** Entitas yang diaudit (RENCANA §4). */
+/** Entitas yang diaudit (RENCANA §4; "JOB" ditambahkan Irisan 4a). */
 export const ENTITAS_AUDIT = [
   "CUSTOMER",
   "VENDOR",
   "PORT",
   "SHIP_LINE",
   "CHARGE_CODE",
+  "JOB",
 ] as const;
+
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
 
 /**
@@ -59,12 +61,23 @@ export interface AuditInput {
   alasan?: string | null;
 }
 
-/** Serialisasi snapshot baris menjadi JSON text (atau null bila kosong). */
+/**
+ * Serialisasi snapshot baris menjadi JSON text (atau null bila kosong).
+ *
+ * BigInt (kolom uang rupiah, mis. selling_idr / kurs_x100) tidak bisa
+ * di-JSON.stringify secara langsung — ditulis sebagai STRING desimal apa
+ * adanya supaya nilai penuhnya tersimpan tanpa kehilangan presisi (tidak
+ * pernah diubah jadi float).
+ */
 function toJsonText(nilai: unknown): string | null {
-  return nilai === undefined || nilai === null ? null : JSON.stringify(nilai);
+  if (nilai === undefined || nilai === null) return null;
+  return JSON.stringify(nilai, (_key, value) =>
+    typeof value === "bigint" ? value.toString() : value,
+  );
 }
 
 /**
+
  * Tulis satu baris audit_log. HARUS dipanggil di dalam transaksi yang sama
  * dengan mutasinya supaya atomik: mutasi gagal → audit tidak tertulis,
  * audit gagal → mutasi ikut rollback.

@@ -329,3 +329,26 @@ terulang tinggi.
 - **Open question untuk klien / Pak Indra**: apakah `app_role` (role aplikasi di level database, mis. OWNER/MANAGER/STAFF) akan diadakan pada irisan berikutnya, agar REVOKE akses masterdata dari role yang tidak berwenang dapat menyusul sebagai migrasi terpisah (mengikuti .clinerules/06-db-migrations.md: db:generate -> tunjukkan SQL -> persetujuan -> db:migrate)?
 - Status sementara: otorisasi mutasi master data dijaga di level aplikasi -- server actions `src/lib/actions/master.ts` via `assertCan(user.role, "master:manage")` (dimiliki OWNER dan MANAGER; STAFF ditolak), dibuktikan oleh skenario "STAFF melihat data master read-only tanpa tombol tambah" di `tests/e2e/master-crud.spec.ts` -- bukan di level database. (Tidak ada role bernama ADMIN di sistem ini; role yang sah hanya OWNER/MANAGER/STAFF.)
 - **Status: MENUNGGU** -- jawaban klien / Pak Indra ditunggu; TIDAK ada migrasi baru yang dibuat untuk ini (Irisan 3 ditutup 16 Agu 2026 tanpa REVOKE di level database).
+
+## Q19 — R11 (job non-shipment) vs ck_legs (Irisan 4a)
+
+- Dicatat: 2026-08-16, Sesi Irisan 4a (schema + form buat job + matriks leg).
+- Konteks: R11 (`docs/DOMAIN-RULES.md` baris 413-418) bertanda ⚠️ DUGAAN dan
+  hanya menyebut "GP boleh 0" untuk penagihan storage/demurrage murni. R11
+  TIDAK menyebut apa pun soal leg, dan tidak ada kolom `job_type`/kategori di
+  tabel `jobs`.
+- Temuan: constraint `ck_legs` (`drizzle/0000_unusual_rockslide.sql` baris
+  167-168) mewajibkan **minimal satu leg** (`leg_trucking OR leg_freight OR
+  leg_delivery`) untuk SETIAP job. "GP boleh 0" TIDAK bentrok dengan ck_legs
+  (skema sudah mendukung selling/pencadangan default 0). Yang berpotensi
+  bentrok hanya interpretasi "non-shipment boleh 0 leg" — tapi itu tebakan
+  yang belum ada di dokumen.
+- **Pertanyaan:** apakah job non-shipment boleh punya 0 leg (yang akan bentrok
+  dengan ck_legs yang mewajibkan >=1 leg)? Atau non-shipment tetap punya >=1
+  leg dan hanya berbeda pada GP = 0?
+- Keputusan sementara (arahan user, Irisan 4a): **JANGAN** melonggarkan
+  `ck_legs`. Sampai Q19 dijawab, sistem memperlakukan SEMUA job (termasuk
+  non-shipment) tetap **wajib >=1 leg**. Tidak ada migrasi yang mengubah
+  `ck_legs`. Form/kode buat job TIDAK mengasumsikan leg=0 diperbolehkan.
+- **Status: MENUNGGU** — jawaban Bu Niken ditunggu (ref R11).
+
