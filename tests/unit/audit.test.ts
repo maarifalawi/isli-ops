@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { AKSI_AUDIT, writeAudit } from "@/lib/audit/index";
+import { type AKSI_AUDIT, writeAudit } from "@/lib/audit/index";
 import { describe, expect, it, vi } from "vitest";
 
 /** Fake tx: cukup punya insert().values(), persis potongan yang dipakai helper. */

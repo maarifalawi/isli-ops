@@ -109,8 +109,14 @@ async function bersihkan() {
       .delete(auditLog)
       .where(and(eq(auditLog.entitas, "JOB"), inArray(auditLog.entitasId, ids)));
     await db.delete(costReallocations).where(inArray(costReallocations.originJobId, ids));
-    await db.delete(costReallocations).where(inArray(costReallocations.destinationJobId, ids));
-    await db.delete(auditLog).where(and(eq(auditLog.entitas, "COST_REALLOCATION"), inArray(auditLog.entitasId, ids)));
+    await db
+      .delete(costReallocations)
+      .where(inArray(costReallocations.destinationJobId, ids));
+    await db
+      .delete(auditLog)
+      .where(
+        and(eq(auditLog.entitas, "COST_REALLOCATION"), inArray(auditLog.entitasId, ids)),
+      );
     await db.delete(costReopenRequests).where(inArray(costReopenRequests.jobId, ids));
     await db.delete(chargeLines).where(inArray(chargeLines.jobId, ids));
     await db.delete(jobs).where(eq(jobs.tahun, TEST_YEAR));
