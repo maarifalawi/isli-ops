@@ -35,6 +35,14 @@ describe("matriks izin", () => {
     expect(can("STAFF", "job:approve_final")).toBe(false);
   });
 
+  it("Irisan 4e: approve realokasi hanya MANAGER/OWNER, STAFF tidak", () => {
+    expect(can("MANAGER", "job:reallocate")).toBe(true);
+    expect(can("OWNER", "job:reallocate")).toBe(true);
+    expect(can("STAFF", "job:reallocate")).toBe(false);
+    // Pembuat proposal cukup job:edit (dimiliki ketiga peran).
+    expect(can("STAFF", "job:edit")).toBe(true);
+  });
+
   it("STAFF tidak boleh menandai invoice vendor lunas", () => {
     expect(can("STAFF", "vendor_invoice:mark_paid")).toBe(false);
   });

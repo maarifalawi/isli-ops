@@ -29,11 +29,24 @@ import { auditLog } from "@/db/schema/index";
  *
  * "HAPUS" ditambahkan Irisan 4b: soft delete charge line (set deleted_at),
  * bukan DELETE keras. Alasan WAJIB, sama seperti NONAKTIFKAN.
+ *
+ * "REALOKASI" ditambahkan Irisan 4e (Q06, ADR-0006): pengajuan pemindahan
+ * biaya antar job. Alasan tertulis WAJIB — sama seperti NONAKTIFKAN/HAPUS.
  */
-export const AKSI_AUDIT = ["CREATE", "EDIT", "NONAKTIFKAN", "AKTIFKAN", "HAPUS"] as const;
+export const AKSI_AUDIT = [
+  "CREATE",
+  "EDIT",
+  "NONAKTIFKAN",
+  "AKTIFKAN",
+  "HAPUS",
+  "REALOKASI",
+] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
-/** Entitas yang diaudit (RENCANA §4; "JOB" Irisan 4a; "CHARGE_LINE" Irisan 4b). */
+/**
+ * Entitas yang diaudit (RENCANA §4; "JOB" Irisan 4a; "CHARGE_LINE" Irisan 4b;
+ * "COST_REALLOCATION" Irisan 4e).
+ */
 export const ENTITAS_AUDIT = [
   "CUSTOMER",
   "VENDOR",
@@ -42,6 +55,7 @@ export const ENTITAS_AUDIT = [
   "CHARGE_CODE",
   "JOB",
   "CHARGE_LINE",
+  "COST_REALLOCATION",
 ] as const;
 
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
@@ -63,7 +77,7 @@ export interface AuditInput {
   sebelum?: unknown;
   /** Baris SESUDAH mutasi (objek penuh, tanpa filter). null/undefined untuk NONAKTIFKAN bila memakai sesudah=null? Tidak -- selalu isi. */
   sesudah?: unknown;
-  /** WAJIB untuk NONAKTIFKAN & HAPUS; opsional lainnya. */
+  /** WAJIB untuk NONAKTIFKAN, HAPUS, & REALOKASI; opsional lainnya. */
   alasan?: string | null;
 }
 
@@ -89,7 +103,12 @@ function toJsonText(nilai: unknown): string | null {
  * audit gagal → mutasi ikut rollback.
  */
 export async function writeAudit(txOrDb: DbOrTx, input: AuditInput) {
-  if ((input.aksi === "NONAKTIFKAN" || input.aksi === "HAPUS") && !input.alasan?.trim()) {
+  if (
+    (input.aksi === "NONAKTIFKAN" ||
+      input.aksi === "HAPUS" ||
+      input.aksi === "REALOKASI") &&
+    !input.alasan?.trim()
+  ) {
     throw new Error(`writeAudit: alasan WAJIB untuk aksi ${input.aksi}.`);
   }
 

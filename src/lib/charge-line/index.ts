@@ -1,9 +1,9 @@
 import type { db } from "@/db/index";
-import { chargeCodes, chargeLines, jobs } from "@/db/schema/index";
+import { chargeCodes, chargeLines, costReallocations, jobs } from "@/db/schema/index";
 import { writeAudit } from "@/lib/audit/index";
 import { AuthorizationError, assertCan } from "@/lib/authz/index";
 import { konversiUsdKeIdr } from "@/lib/money/index";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   type ChargeLineFields,
   validasiChargeLine,
@@ -439,6 +439,24 @@ export async function hapusChargeLine(
       .where(eq(chargeLines.id, lineId));
     if (!sebelum) return gagal("Baris biaya tidak ditemukan.");
     if (sebelum.deletedAt) return gagal("Baris biaya sudah dihapus.");
+
+    /*
+     * Guard Irisan 4e (keputusan poin 6): baris yang punya proposal realokasi
+     * — PENDING maupun APPROVED — TIDAK BOLEH di-soft-delete. Soft delete
+     * tidak tersentuh FK (bukan DELETE keras), jadi penolakan harus di lapis
+     * aplikasi. Realokasi yang sudah disetujui membebani baris ini; proposal
+     * pending masih menunggu keputusan — menghapus barisnya memutus konteks.
+     */
+    const [hitung] = await tx
+      .select({ n: sql<number>`COUNT(*)::int` })
+      .from(costReallocations)
+      .where(eq(costReallocations.originChargeLineId, lineId));
+    if ((hitung?.n ?? 0) > 0) {
+      return gagal(
+        "Baris biaya ini punya realokasi biaya (pending atau sudah disetujui). " +
+          "Selesaikan atau tolak realokasinya terlebih dahulu.",
+      );
+    }
 
     const [sesudah] = await tx
       .update(chargeLines)

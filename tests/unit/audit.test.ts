@@ -94,6 +94,41 @@ describe("writeAudit", () => {
       expect.objectContaining({ alasan: "Sudah tidak dipakai" }),
     );
   });
+
+  // ── Irisan 4e: REALOKASI & COST_REALLOCATION ─────────────────────────────
+  it("REALOKASI tanpa alasan ditolak (Q06: alasan tertulis wajib)", async () => {
+    const { tx, insert } = fakeTx();
+    await expect(
+      writeAudit(tx, {
+        userId: "u-5",
+        aksi: "REALOKASI",
+        entitas: "COST_REALLOCATION",
+        alasan: "  ",
+      }),
+    ).rejects.toThrow(/alasan WAJIB/);
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it("REALOKASI dengan alasan: entitas COST_REALLOCATION terekam", async () => {
+    const { tx, values } = fakeTx();
+    await writeAudit(tx, {
+      userId: "u-5",
+      aksi: "REALOKASI",
+      entitas: "COST_REALLOCATION",
+      entitasId: "r-1",
+      sesudah: { jumlahIdr: 2_500_000n },
+      alasan: "Biaya dooring milik job tujuan",
+    });
+    expect(values).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aksi: "REALOKASI",
+        entitas: "COST_REALLOCATION",
+        alasan: "Biaya dooring milik job tujuan",
+        // bigint uang tersimpan sebagai string desimal penuh, bukan float
+        sesudah: JSON.stringify({ jumlahIdr: "2500000" }),
+      }),
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
