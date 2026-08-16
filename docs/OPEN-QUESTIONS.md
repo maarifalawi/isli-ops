@@ -319,3 +319,36 @@ terulang tinggi.
 | Q77 | ⚠️ Approval addendum VENDOR (R17.5) -- apakah levelnya sama seperti addendum customer (Manager/Owner, ≠ pembuat), atau vendor punya alur approval sendiri (misalnya cukup yang biasa approve pembayaran vendor)? | INDRA | R17.5 | menunggu |
 | Q78 | ⚠️ Untuk invoice yang terbit sebelum POD (R9.4b) -- siapa yang berhak approve jalur ini? Sama dengan approval final job (Pak Indra), atau boleh Manager Finance? | INDRA | R9.4b | menunggu |
 | Q79 | ⚠️ Berita acara (R6.4) -- format dokumennya bebas (foto/PDF apa saja), atau ada template baku yang harus dipakai? | NIKEN | R6.4 | menunggu |
+
+## app_role / REVOKE masterdata di level database (Irisan 3, tahap 10.5)
+
+- Dicatat: 2026-08-16, Sesi D, tahap 10.5 (langkah 3).
+- Hasil pemeriksaan: `grep -r "REVOKE\|app_role" drizzle/*.sql` -> **0 match** (PowerShell: `Select-String -Path drizzle\*.sql -Pattern 'REVOKE','app_role'`, keluaran kosong, exit code 1).
+- Artinya: `app_role` **belum ada sama sekali** di skema maupun migrasi (0000, 0001, 0002).
+- Sesuai instruksi 10.5 langkah 3: migrasi REVOKE **TIDAK dibuat** sekarang, karena membuat `app_role` berada di luar cakupan asli Irisan 3 (skema dibekukan sejak migrasi 0002).
+- **Open question untuk klien / Pak Indra**: apakah `app_role` (role aplikasi di level database, mis. OWNER/MANAGER/STAFF) akan diadakan pada irisan berikutnya, agar REVOKE akses masterdata dari role yang tidak berwenang dapat menyusul sebagai migrasi terpisah (mengikuti .clinerules/06-db-migrations.md: db:generate -> tunjukkan SQL -> persetujuan -> db:migrate)?
+- Status sementara: otorisasi mutasi master data dijaga di level aplikasi -- server actions `src/lib/actions/master.ts` via `assertCan(user.role, "master:manage")` (dimiliki OWNER dan MANAGER; STAFF ditolak), dibuktikan oleh skenario "STAFF melihat data master read-only tanpa tombol tambah" di `tests/e2e/master-crud.spec.ts` -- bukan di level database. (Tidak ada role bernama ADMIN di sistem ini; role yang sah hanya OWNER/MANAGER/STAFF.)
+- **Status: MENUNGGU** -- jawaban klien / Pak Indra ditunggu; TIDAK ada migrasi baru yang dibuat untuk ini (Irisan 3 ditutup 16 Agu 2026 tanpa REVOKE di level database).
+
+## Q19 — R11 (job non-shipment) vs ck_legs (Irisan 4a)
+
+- Dicatat: 2026-08-16, Sesi Irisan 4a (schema + form buat job + matriks leg).
+- Konteks: R11 (`docs/DOMAIN-RULES.md` baris 413-418) bertanda ⚠️ DUGAAN dan
+  hanya menyebut "GP boleh 0" untuk penagihan storage/demurrage murni. R11
+  TIDAK menyebut apa pun soal leg, dan tidak ada kolom `job_type`/kategori di
+  tabel `jobs`.
+- Temuan: constraint `ck_legs` (`drizzle/0000_unusual_rockslide.sql` baris
+  167-168) mewajibkan **minimal satu leg** (`leg_trucking OR leg_freight OR
+  leg_delivery`) untuk SETIAP job. "GP boleh 0" TIDAK bentrok dengan ck_legs
+  (skema sudah mendukung selling/pencadangan default 0). Yang berpotensi
+  bentrok hanya interpretasi "non-shipment boleh 0 leg" — tapi itu tebakan
+  yang belum ada di dokumen.
+- **Pertanyaan:** apakah job non-shipment boleh punya 0 leg (yang akan bentrok
+  dengan ck_legs yang mewajibkan >=1 leg)? Atau non-shipment tetap punya >=1
+  leg dan hanya berbeda pada GP = 0?
+- Keputusan sementara (arahan user, Irisan 4a): **JANGAN** melonggarkan
+  `ck_legs`. Sampai Q19 dijawab, sistem memperlakukan SEMUA job (termasuk
+  non-shipment) tetap **wajib >=1 leg**. Tidak ada migrasi yang mengubah
+  `ck_legs`. Form/kode buat job TIDAK mengasumsikan leg=0 diperbolehkan.
+- **Status: MENUNGGU** — jawaban Bu Niken ditunggu (ref R11).
+
