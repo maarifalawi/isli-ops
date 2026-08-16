@@ -25,6 +25,7 @@ export const ACTIONS = [
   "job:approve_final",
   "job:unlock",
   "job:view_margin",
+  "job:reallocate",
   "invoice:create",
   "invoice:issue",
   "invoice:void",
@@ -51,6 +52,13 @@ export type Action = (typeof ACTIONS)[number];
  *
  * Yang TETAP dibatasi untuk STAFF: menyetujui, membuka kunci, menerbitkan
  * invoice, menandai lunas, dan mengelola data master.
+ *
+ * Irisan 4e — `job:reallocate` adalah izin MENYETUJUI/MENOLAK proposal
+ * realokasi biaya (Q06). KHUSUS MANAGER & OWNER; STAFF TIDAK punya.
+ * Pembuat proposal cukup `job:edit` (termasuk STAFF) — lihat
+ * src/lib/realokasi. Sengaja tidak diberi ke STAFF supaya "staff bisa
+ * mengajukan, tapi tidak bisa meloloskan ajakannya sendiri" — approver ≠
+ * pembuat tetap ditegakkan lewat assertNotSelfApproval (R-A1).
  */
 const PERMISSIONS: Readonly<Record<Role, ReadonlySet<Action>>> = {
   OWNER: new Set<Action>(ACTIONS),
@@ -60,6 +68,7 @@ const PERMISSIONS: Readonly<Record<Role, ReadonlySet<Action>>> = {
     "job:submit",
     "job:approve_first",
     "job:view_margin",
+    "job:reallocate",
     "invoice:create",
     "invoice:issue",
     "vendor_invoice:create",

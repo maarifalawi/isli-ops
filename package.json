@@ -20,7 +20,7 @@
 
     "test": "vitest run --exclude '**/*.golden.test.ts'",
     "test:watch": "vitest",
-    "test:golden": "vitest run --testNamePattern='' tests/golden",
+    "test:golden": "vitest run tests/golden",
     "test:e2e": "playwright test",
     "test:coverage": "vitest run --coverage",
 
