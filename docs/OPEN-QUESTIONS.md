@@ -352,3 +352,35 @@ terulang tinggi.
   `ck_legs`. Form/kode buat job TIDAK mengasumsikan leg=0 diperbolehkan.
 - **Status: MENUNGGU** — jawaban Bu Niken ditunggu (ref R11).
 
+## Q-4d-1/2/3 — GP/GP%/NETT (Irisan 4d) — DIJAWAB 16 Agu 2026
+
+Keputusan user (jawaban atas Tahap 1–3 Irisan 4d), mengunci rumus di
+`src/lib/costing/index.ts` (`hitungGP`/`hitungGPpct`/`hitungNETT`/`isLoss`):
+
+- **Q-4d-1 (reimburse): STATUS QUO R4.2.**
+  `GP = SUM(selling_idr WHERE is_reimburse=false) − SUM(pencadangan_idr SEMUA)`;
+  `NETT = SUM(selling_idr WHERE is_reimburse=false) + ppn_idr − SUM(pencadangan_idr SEMUA)`.
+  Reimburse KELUAR dari selling, TETAP MASUK buying. **ADR-0007 TETAP berstatus
+  PROPOSED / BELUM DIPUTUSKAN — jangan ubah statusnya.** Kalau klien kelak
+  memilih rumus simetris, itu irisan terpisah. Konsekuensi yang dikunci test:
+  job 100% at-cost ber-GP negatif sebesar total at-cost (asimetri R4.2).
+- **Q-4d-2 (basis buying): `pencadangan_idr`.** Selalu terisi (NOT NULL DEFAULT
+  0), aman untuk SUM. `actual_idr` nullable — JANGAN basis utama; variance
+  (actual vs pencadangan) tetap di `computeVariance`, tidak dicampur ke GP.
+  **GP 4d = GP berbasis pencadangan (anggaran); actual-based GP = irisan
+  mendatang.**
+- **Q-4d-3 (basis selling): `SUM(charge_lines.selling_idr WHERE deleted_at IS
+  NULL)`.** Header `jobs.selling_idr` = cross-check saja (R14.5 melarang simpan
+  rekap). Kalau header ≠ SUM, tampilkan warning, jangan pakai header sebagai
+  sumber GP.
+
+Rekonsiliasi 75-job (gerbang 4d): total GP `fixtures/golden-jobs.csv`
+= 280.150.000 = `gpBenar` SUMMARY 2026 — **Rp0 persis**, dikunci di
+`tests/golden/gp-75-jobs.golden.test.ts`. Selisih selling/cost CSV vs SUMMARY
+(27.667.693) = total 8 baris at-cost `fixtures/golden-job-reimburse.csv` di
+kedua sisi; atribusi bulanan SUMMARY diketik manual (Q42) sehingga hanya
+GRAND TOTAL yang direkonsiliasi.
+
+Q64 dan Q19 TETAP MENUNGGU — default konservatif dipertahankan (Q64: semua kode
+butuh vendor; Q19: semua job wajib >=1 leg).
+
