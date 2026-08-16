@@ -93,6 +93,46 @@ export function applyRateBp(base: Rupiah, bp: BasisPoints | number): Rupiah {
 }
 
 /**
+ * Konversi USD → IDR untuk charge line EXIM (Irisan 4c, DOMAIN-RULES R8.1/R8.2).
+ *
+ * PENTING — pembulatan BEDA dari pajak. R8.2 berbunyi persis
+ * `amount_idr = round(amount_usd * fx_rate)` — ROUND (pembulatan ke terdekat,
+ * half away from zero), BUKAN ceiling. Pembulatan ceiling (`applyRateBp`) hanya
+ * untuk PPN/PPh 23 (R3.6/Q05). JANGAN memakai applyRateBp di sini; kalau
+ * tertukar, invoice EXIM bisa meleset Rp 1 dari lembar SO klien.
+ *
+ * Konvensi unit (dikonfirmasi src/lib/job/index.ts & schema jobs):
+ *   - `usd`      : USD UTUH (integer, bukan sen).
+ *   - `kursX100` : kurs dikali 100 (integer). 18.200 → 1_820_000.
+ *   - idr_exact  = usd * kursX100 / 100  → dibulatkan ke rupiah terdekat.
+ *
+ * Semua bigint; tidak ada float sama sekali (ADR-0002). Half-up dilakukan
+ * dengan menambah setengah pembagi (50) sebelum membagi 100.
+ *
+ * Menolak input tidak wajar (melempar, tidak mengembalikan nilai diam-diam):
+ *   - kurs ≤ 0   → RangeError (kurs wajib positif; R8.1 kurs manual per job).
+ *   - usd  < 0   → RangeError (nilai charge line tidak boleh negatif).
+ *
+ * @example konversiUsdKeIdr(510n, 1_830_000n) // => 9_333_000n (USD 510 × 18.300)
+ */
+export function konversiUsdKeIdr(usd: bigint, kursX100: bigint): Rupiah {
+  if (kursX100 <= 0n) {
+    throw new RangeError(
+      `Kurs (x100) harus lebih besar dari nol, diterima ${kursX100}. Isi kurs USD job terlebih dahulu (R8.1).`,
+    );
+  }
+
+  if (usd < 0n) {
+    throw new RangeError(`Nilai USD tidak boleh negatif, diterima ${usd}.`);
+  }
+  // idr_exact = usd * kursX100 / 100. Pembulatan half-up (half away from zero);
+  // untuk usd ≥ 0 & kurs > 0, numerator ≥ 0, jadi cukup +50 lalu bagi 100.
+  const numerator = usd * kursX100;
+  const denominator = 100n;
+  return ((numerator + denominator / 2n) / denominator) as Rupiah;
+}
+
+/**
  * Format untuk tampilan. Tanpa awalan "Rp" — di tabel, satuan ditaruh di
  * kepala kolom, bukan diulang di tiap sel (docs/DESIGN-SYSTEM.md).
  *

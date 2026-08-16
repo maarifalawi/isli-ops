@@ -495,8 +495,10 @@ export const chargeLines = pgTable(
      * ADD COLUMN aman pada baris lama. Sisi BUYING tetap pencadangan_idr
      * (perkiraan) + actual_idr (realisasi) yang sudah ada.
      *
-     * TIDAK ADA konversi kurs di sini (itu Irisan 4c). currency di bawah hanya
-     * penanda tampilan; angka disimpan apa adanya sesuai currency-nya.
+     * Irisan 4c: kolom *_idr SELALU rupiah murni. Untuk baris USD, server
+     * mengisi kolom ini dari hasil konversi *_usd × jobs.kurs_x100
+     * (money.konversiUsdKeIdr, ROUND per R8.2) — kurs DIBEKUKAN saat baris
+     * dibuat, tidak direcompute otomatis kalau kurs job berubah belakangan.
      */
     sellingIdr: bigint("selling_idr", { mode: "bigint" }).notNull().default(sql`0`),
 
@@ -506,6 +508,19 @@ export const chargeLines = pgTable(
       .default(sql`0`),
     /** Nilai sebenarnya setelah invoice vendor masuk. Null = belum ada. */
     actualIdr: bigint("actual_idr", { mode: "bigint" }),
+
+    /*
+     * Irisan 4c — nilai NATIVE USD (utuh, bukan sen) untuk baris EXIM. NULL
+     * untuk baris IDR. Kolom *_idr di atas tetap sumber kebenaran untuk GP &
+     * pajak; kolom *_usd ini menyimpan angka asli yang diketik user supaya
+     * jejaknya tidak hilang saat kurs dibekukan. Nullable + aditif (pola 0003).
+     *
+     * CHECK ck_charge_line_usd_native (di bawah) menjamin: currency='IDR' ⇒
+     * ketiga kolom ini NULL, jadi mustahil ada USD nyasar di baris rupiah.
+     */
+    sellingUsd: bigint("selling_usd", { mode: "bigint" }),
+    pencadanganUsd: bigint("pencadangan_usd", { mode: "bigint" }),
+    actualUsd: bigint("actual_usd", { mode: "bigint" }),
 
     /*
      * Kolom terhitung. Tidak mungkin menyimpan selisih yang tidak konsisten
@@ -569,6 +584,20 @@ export const chargeLines = pgTable(
     ckAtCost: check(
       "ck_charge_line_at_cost",
       sql`NOT "is_at_cost" OR "selling_idr" = "pencadangan_idr"`,
+    ),
+
+    /*
+     * Irisan 4c — mata uang native harus konsisten dengan penanda `currency`.
+     * currency='USD' → kolom *_usd boleh terisi (native USD).
+     * currency='IDR' → ketiga kolom *_usd WAJIB NULL (tidak ada USD nyasar).
+     * Karena currency hanya 'IDR'|'USD' (ckCurrency), bentuk di bawah setara
+     * dengan "currency='IDR' ⇒ *_usd IS NULL". Baris lama (currency='IDR',
+     * *_usd NULL karena ADD COLUMN nullable) otomatis lolos tanpa backfill.
+     */
+    ckUsdNative: check(
+      "ck_charge_line_usd_native",
+      sql`"currency" = 'USD'
+			    OR ("selling_usd" IS NULL AND "pencadangan_usd" IS NULL AND "actual_usd" IS NULL)`,
     ),
   }),
 );

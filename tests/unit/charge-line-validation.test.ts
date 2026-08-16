@@ -4,6 +4,7 @@ import {
   isCurrencySah,
   isLegSah,
   validasiChargeLine,
+  validasiCurrencyNative,
 } from "../../src/lib/charge-line/validation";
 
 /*
@@ -131,5 +132,77 @@ describe("validasiChargeLine", () => {
         currency: "IDR",
       }),
     ).toEqual({ ok: true });
+  });
+});
+
+describe("validasiCurrencyNative (Irisan 4c)", () => {
+  const baseUsd = {
+    sellingIdr: 0n,
+    pencadanganIdr: 0n,
+    isAtCost: false,
+    leg: null as number | null,
+    currency: "USD",
+    sellingUsd: 510n,
+    pencadanganUsd: 500n,
+    actualUsd: null as bigint | null,
+  };
+
+  it("baris IDR tanpa nilai USD valid", () => {
+    expect(
+      validasiCurrencyNative({
+        sellingIdr: 1_000_000n,
+        pencadanganIdr: 800_000n,
+        isAtCost: false,
+        leg: null,
+        currency: "IDR",
+      }),
+    ).toEqual({ ok: true });
+  });
+
+  it("baris IDR yang menyimpan USD ditolak (cermin ck_charge_line_usd_native)", () => {
+    const r = validasiCurrencyNative({
+      sellingIdr: 0n,
+      pencadanganIdr: 0n,
+      isAtCost: false,
+      leg: null,
+      currency: "IDR",
+      sellingUsd: 510n,
+    });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("IDR");
+  });
+
+  it("baris USD lengkap valid", () => {
+    expect(validasiCurrencyNative(baseUsd)).toEqual({ ok: true });
+  });
+
+  it("baris USD tanpa nilai jual/beli ditolak", () => {
+    const r = validasiCurrencyNative({ ...baseUsd, sellingUsd: null });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("USD");
+  });
+
+  it("baris USD negatif ditolak", () => {
+    const r = validasiCurrencyNative({ ...baseUsd, sellingUsd: -1n });
+    expect(r.ok).toBe(false);
+  });
+
+  it("at-cost USD wajib selling_usd = pencadangan_usd (R4.3 native)", () => {
+    const seimbang = validasiCurrencyNative({
+      ...baseUsd,
+      isAtCost: true,
+      sellingUsd: 500n,
+      pencadanganUsd: 500n,
+    });
+    expect(seimbang).toEqual({ ok: true });
+
+    const timpang = validasiCurrencyNative({
+      ...baseUsd,
+      isAtCost: true,
+      sellingUsd: 510n,
+      pencadanganUsd: 500n,
+    });
+    expect(timpang.ok).toBe(false);
+    if (!timpang.ok) expect(timpang.error).toContain("R4.3");
   });
 });

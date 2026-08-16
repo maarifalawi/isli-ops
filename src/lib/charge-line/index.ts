@@ -2,8 +2,13 @@ import type { db } from "@/db/index";
 import { chargeCodes, chargeLines, jobs } from "@/db/schema/index";
 import { writeAudit } from "@/lib/audit/index";
 import { AuthorizationError, assertCan } from "@/lib/authz/index";
+import { konversiUsdKeIdr } from "@/lib/money/index";
 import { and, eq, isNull } from "drizzle-orm";
-import { type ChargeLineFields, validasiChargeLine } from "./validation";
+import {
+  type ChargeLineFields,
+  validasiChargeLine,
+  validasiCurrencyNative,
+} from "./validation";
 
 /*
  * CRUD charge line per job — Irisan 4b.
@@ -49,6 +54,14 @@ export interface ChargeLineInput {
   keterangan?: string | null;
   sellingIdr?: number | bigint | null;
   pencadanganIdr?: number | bigint | null;
+  /*
+   * Irisan 4c — nilai NATIVE USD (utuh, bukan sen). Diisi HANYA saat
+   * currency='USD'. Untuk currency='IDR' harus kosong. actualUsd opsional
+   * (realisasi belum ada saat baris dibuat).
+   */
+  sellingUsd?: number | bigint | null;
+  pencadanganUsd?: number | bigint | null;
+  actualUsd?: number | bigint | null;
   isReimburse?: boolean;
   isAtCost?: boolean;
   leg?: number | null;
@@ -101,6 +114,28 @@ function rupiahUtuh(
 }
 
 /**
+ * Integer USD utuh → bigint; tolak pecahan/NaN. null/undefined → null
+ * (dibiarkan kosong, dibedakan dari 0 yang berarti "nol dolar").
+ */
+function usdUtuh(
+  v: number | bigint | null | undefined,
+  label: string,
+): { ok: true; value: bigint | null } | { ok: false; error: string } {
+  if (v === null || v === undefined) return { ok: true, value: null };
+  if (typeof v === "bigint") return { ok: true, value: v };
+  if (!Number.isInteger(v)) {
+    return { ok: false, error: `${label} harus bilangan bulat USD (tanpa sen).` };
+  }
+  if (!Number.isSafeInteger(v)) {
+    return {
+      ok: false,
+      error: `${label} di luar rentang aman; pakai nilai lebih kecil.`,
+    };
+  }
+  return { ok: true, value: BigInt(v) };
+}
+
+/**
  * Nilai charge line yang sudah dinormalkan + siap tulis ke DB.
  * Hasil validasi bersama create & update (DRY).
  */
@@ -108,8 +143,14 @@ interface NilaiTervalidasi {
   chargeCode: string;
   vendorId: string | null;
   keterangan: string | null;
+  /** SELALU IDR murni. Untuk baris USD ini hasil konversi (kurs job dibekukan). */
   sellingIdr: bigint;
   pencadanganIdr: bigint;
+  actualIdr: bigint | null;
+  /** Native USD (utuh). null untuk baris IDR. */
+  sellingUsd: bigint | null;
+  pencadanganUsd: bigint | null;
+  actualUsd: bigint | null;
   isReimburse: boolean;
   isAtCost: boolean;
   leg: number | null;
@@ -132,19 +173,88 @@ async function validasiDenganMaster(
   const kode = teks(input.chargeCode)?.toUpperCase();
   if (!kode) return gagal("Kode biaya wajib dipilih.");
 
-  const selling = rupiahUtuh(input.sellingIdr, "Nilai jual");
-  if (!selling.ok) return gagal(selling.error);
-  const pencadangan = rupiahUtuh(input.pencadanganIdr, "Nilai beli (pencadangan)");
-  if (!pencadangan.ok) return gagal(pencadangan.error);
-
   const leg = input.leg ?? null;
   const currency = teks(input.currency)?.toUpperCase() ?? "IDR";
   const isReimburse = input.isReimburse ?? false;
   const isAtCost = input.isAtCost ?? false;
 
+  // Nilai USD native (utuh). Untuk baris IDR ini akan null.
+  const sUsd = usdUtuh(input.sellingUsd, "Nilai jual USD");
+  if (!sUsd.ok) return gagal(sUsd.error);
+  const pUsd = usdUtuh(input.pencadanganUsd, "Nilai beli USD");
+  if (!pUsd.ok) return gagal(pUsd.error);
+  const aUsd = usdUtuh(input.actualUsd, "Nilai aktual USD");
+  if (!aUsd.ok) return gagal(aUsd.error);
+
+  /*
+   * Sumber kebenaran *_idr:
+   *   - Baris IDR : diambil dari input sellingIdr/pencadanganIdr (utuh).
+   *   - Baris USD : DIHITUNG dari *_usd × kurs job (kurs dibekukan di baris ini).
+   *     Input sellingIdr/pencadanganIdr diabaikan untuk baris USD supaya tidak
+   *     ada dua sumber angka yang bisa berbeda diam-diam.
+   */
+  let sellingIdrVal: bigint;
+  let pencadanganIdrVal: bigint;
+  let actualIdrVal: bigint | null;
+
+  if (currency === "USD") {
+    // R8.1 — kurs per job WAJIB terisi sebelum baris USD boleh dibuat/diubah.
+    const [jobRow] = await tx
+      .select({ kursX100: jobs.kursX100 })
+      .from(jobs)
+      .where(eq(jobs.id, input.jobId));
+    if (!jobRow) return gagal("Job tidak ditemukan.");
+    if (jobRow.kursX100 === null || jobRow.kursX100 === undefined) {
+      return gagal(
+        "Job ini belum punya kurs USD. Isi kurs USD job terlebih dahulu sebelum " +
+          "menambah baris biaya dalam USD (R8.1).",
+      );
+    }
+
+    // Validasi mata uang native (at-cost dalam USD, wajib isi, non-negatif).
+    const nativeCheck = validasiCurrencyNative({
+      sellingIdr: 0n,
+      pencadanganIdr: 0n,
+      isAtCost,
+      leg,
+      currency,
+      sellingUsd: sUsd.value,
+      pencadanganUsd: pUsd.value,
+      actualUsd: aUsd.value,
+    });
+    if (!nativeCheck.ok) return gagal(nativeCheck.error);
+
+    // sUsd/pUsd dijamin non-null oleh validasiCurrencyNative di atas.
+    const kurs = jobRow.kursX100;
+    sellingIdrVal = konversiUsdKeIdr(sUsd.value as bigint, kurs);
+    pencadanganIdrVal = konversiUsdKeIdr(pUsd.value as bigint, kurs);
+    actualIdrVal = aUsd.value === null ? null : konversiUsdKeIdr(aUsd.value, kurs);
+  } else {
+    // Baris IDR — *_usd wajib kosong (validasiCurrencyNative), *_idr dari input.
+    const nativeCheck = validasiCurrencyNative({
+      sellingIdr: 0n,
+      pencadanganIdr: 0n,
+      isAtCost,
+      leg,
+      currency,
+      sellingUsd: sUsd.value,
+      pencadanganUsd: pUsd.value,
+      actualUsd: aUsd.value,
+    });
+    if (!nativeCheck.ok) return gagal(nativeCheck.error);
+
+    const selling = rupiahUtuh(input.sellingIdr, "Nilai jual");
+    if (!selling.ok) return gagal(selling.error);
+    const pencadangan = rupiahUtuh(input.pencadanganIdr, "Nilai beli (pencadangan)");
+    if (!pencadangan.ok) return gagal(pencadangan.error);
+    sellingIdrVal = selling.value;
+    pencadanganIdrVal = pencadangan.value;
+    actualIdrVal = null;
+  }
+
   const fields: ChargeLineFields = {
-    sellingIdr: selling.value,
-    pencadanganIdr: pencadangan.value,
+    sellingIdr: sellingIdrVal,
+    pencadanganIdr: pencadanganIdrVal,
     isAtCost,
     leg,
     currency,
@@ -174,8 +284,12 @@ async function validasiDenganMaster(
       chargeCode: kode,
       vendorId,
       keterangan: teks(input.keterangan),
-      sellingIdr: selling.value,
-      pencadanganIdr: pencadangan.value,
+      sellingIdr: sellingIdrVal,
+      pencadanganIdr: pencadanganIdrVal,
+      actualIdr: actualIdrVal,
+      sellingUsd: currency === "USD" ? (sUsd.value as bigint) : null,
+      pencadanganUsd: currency === "USD" ? (pUsd.value as bigint) : null,
+      actualUsd: currency === "USD" ? aUsd.value : null,
       isReimburse,
       isAtCost,
       leg,
@@ -216,6 +330,10 @@ export async function createChargeLine(
         keterangan: n.keterangan,
         sellingIdr: n.sellingIdr,
         pencadanganIdr: n.pencadanganIdr,
+        actualIdr: n.actualIdr,
+        sellingUsd: n.sellingUsd,
+        pencadanganUsd: n.pencadanganUsd,
+        actualUsd: n.actualUsd,
         isReimburse: n.isReimburse,
         isAtCost: n.isAtCost,
         leg: n.leg,
@@ -271,6 +389,10 @@ export async function updateChargeLine(
         keterangan: n.keterangan,
         sellingIdr: n.sellingIdr,
         pencadanganIdr: n.pencadanganIdr,
+        actualIdr: n.actualIdr,
+        sellingUsd: n.sellingUsd,
+        pencadanganUsd: n.pencadanganUsd,
+        actualUsd: n.actualUsd,
         isReimburse: n.isReimburse,
         isAtCost: n.isAtCost,
         leg: n.leg,
