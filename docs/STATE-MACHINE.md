@@ -2,6 +2,20 @@
 
 > Semua transisi status di sistem. Agent: dilarang membuat status baru atau
 > transisi yang tidak ada di sini. Setiap transisi **wajib** menulis audit log.
+>
+> **Mapping nama (Irisan 5, keputusan user Q-IRIS5-2, 17 Agu 2026):** skema
+> database adalah sumber kebenaran. Nama di dokumen ini dipetakan ke nilai
+> enum `job_status`:
+>
+> | Dokumen (konseptual) | Skema (`job_status`) |
+> |---|---|
+> | SUBMITTED | DIAJUKAN |
+> | APPROVED_L1 | DISETUJUI_1 |
+> | CANCELLED | DIBATALKAN |
+> | DRAFT, FINAL, UNLOCK_REQUESTED | sama di keduanya |
+>
+> `UNLOCK_REQUESTED` adalah state nyata di enum (Q-IRIS5-1) — pekerjaan
+> menunggu keputusan Owner; detail pengajuannya di `cost_reopen_requests`.
 
 ---
 
@@ -47,7 +61,9 @@
 | J-INV-3 | Job yang sudah punya invoice `ISSUED` **tidak boleh** di-unlock. Harus lewat pembatalan invoice dulu. |
 | J-INV-4 | Job yang invoice-nya sudah `PAID` **tidak boleh** di-unlock sama sekali (R6.3). |
 | J-INV-5 | Approver tidak boleh sama dengan maker pada tahap mana pun. |
-| J-INV-6 | Setiap transisi menulis satu baris `audit_log` berisi aktor, status lama, status baru, alasan, timestamp. |
+| J-INV-6 | Setiap transisi menulis satu baris `audit_log` berisi aktor, status lama, status baru, alasan, timestamp. Aksi audit: SUBMIT, CANCEL, APPROVE_L1, REJECT, APPROVE_FINAL, REQUEST_UNLOCK, UNLOCK_GRANTED, UNLOCK_DENIED (Q-IRIS5-7). |
+| J-INV-7 | **Irisan 5 (Q-IRIS5-8):** `DIBATALKAN` juga terminal — charge line, header, kurs, dan realokasi terkunci sama seperti FINAL. `isEditable` = hanya DRAFT; `isLocked` = FINAL \| DIBATALKAN. |
+| J-INV-8 | **Irisan 5 (Q-IRIS5-3):** reject (level apa pun) dan unlock_granted menaikkan `jobs.approval_cycle` — semua approval cycle lama gugur; submit ulang memulai cycle baru (tidak menabrak `uq_approval_sekali`). |
 
 ---
 
@@ -129,9 +145,10 @@
 | `ACTUAL` | Sudah ada invoice vendor. `selisih` terhitung. |
 | `LOCKED` | Invoice vendor sudah dibayar. Nilai beku. |
 
-🔴 **Transisi `reallocate` (memindahkan biaya antar job) BELUM DIDEFINISIKAN.**
-Menunggu keputusan ADR-0006 / Q06. Agent dilarang mengimplementasikan
-pemindahan biaya dalam bentuk apa pun sebelum ADR itu `Accepted`.
+✅ **Irisan 4e / ADR-0006 (Accepted 13 Agu 2026):** realokasi biaya antar
+job terimplementasi sebagai proposal overlay di tabel `cost_reallocations`
+(approval manajer, ≠ pembuat). Baris fisik charge_lines tidak pernah diubah.
+Job asal ATAU tujuan yang `isLocked` (FINAL/DIBATALKAN) menolak realokasi.
 
 ---
 

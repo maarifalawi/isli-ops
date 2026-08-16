@@ -48,6 +48,7 @@ export const jobStatusEnum = pgEnum("job_status", [
   "DIAJUKAN",
   "DISETUJUI_1",
   "FINAL",
+  "UNLOCK_REQUESTED",
   "DIBATALKAN",
 ]);
 
@@ -298,6 +299,13 @@ export const jobs = pgTable(
 
     // --- alur ---
     status: jobStatusEnum("status").notNull().default("DRAFT"),
+    /**
+     * Irisan 5 (Q-IRIS5-3): siklus persetujuan. Naik setiap reject (level
+     * apa pun) dan setiap unlock_granted - approval cycle lama gugur
+     * (R6.2/R-A3). Tanpa kolom ini, submit ulang setelah reject menabrak
+     * uq_approval_sekali di cycle yang sama.
+     */
+    approvalCycle: integer("approval_cycle").notNull().default(1),
     makerId: uuid("maker_id")
       .notNull()
       .references(() => users.id),

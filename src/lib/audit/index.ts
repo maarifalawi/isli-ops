@@ -32,6 +32,14 @@ import { auditLog } from "@/db/schema/index";
  *
  * "REALOKASI" ditambahkan Irisan 4e (Q06, ADR-0006): pengajuan pemindahan
  * biaya antar job. Alasan tertulis WAJIB — sama seperti NONAKTIFKAN/HAPUS.
+ *
+ * Delapan aksi transisi state machine ditambahkan Irisan 5 (J-INV-6: setiap
+ * transisi wajib 1 baris audit; keputusan user Q-IRIS5-7, 17 Agu 2026 — aksi
+ * SPESIFIK per transisi, bukan STATE_CHANGE generik):
+ *   SUBMIT · CANCEL · APPROVE_L1 · REJECT · APPROVE_FINAL ·
+ *   REQUEST_UNLOCK · UNLOCK_GRANTED · UNLOCK_DENIED
+ * Alasan WAJIB untuk REJECT, REQUEST_UNLOCK, UNLOCK_DENIED (Q-IRIS5-7);
+ * opsional untuk SUBMIT/CANCEL/APPROVE_L1/APPROVE_FINAL/UNLOCK_GRANTED.
  */
 export const AKSI_AUDIT = [
   "CREATE",
@@ -40,6 +48,14 @@ export const AKSI_AUDIT = [
   "AKTIFKAN",
   "HAPUS",
   "REALOKASI",
+  "SUBMIT",
+  "CANCEL",
+  "APPROVE_L1",
+  "REJECT",
+  "APPROVE_FINAL",
+  "REQUEST_UNLOCK",
+  "UNLOCK_GRANTED",
+  "UNLOCK_DENIED",
 ] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
@@ -77,7 +93,7 @@ export interface AuditInput {
   sebelum?: unknown;
   /** Baris SESUDAH mutasi (objek penuh, tanpa filter). null/undefined untuk NONAKTIFKAN bila memakai sesudah=null? Tidak -- selalu isi. */
   sesudah?: unknown;
-  /** WAJIB untuk NONAKTIFKAN, HAPUS, & REALOKASI; opsional lainnya. */
+  /** WAJIB untuk NONAKTIFKAN, HAPUS, REALOKASI, REJECT, REQUEST_UNLOCK, UNLOCK_DENIED; opsional lainnya. */
   alasan?: string | null;
 }
 
@@ -106,7 +122,10 @@ export async function writeAudit(txOrDb: DbOrTx, input: AuditInput) {
   if (
     (input.aksi === "NONAKTIFKAN" ||
       input.aksi === "HAPUS" ||
-      input.aksi === "REALOKASI") &&
+      input.aksi === "REALOKASI" ||
+      input.aksi === "REJECT" ||
+      input.aksi === "REQUEST_UNLOCK" ||
+      input.aksi === "UNLOCK_DENIED") &&
     !input.alasan?.trim()
   ) {
     throw new Error(`writeAudit: alasan WAJIB untuk aksi ${input.aksi}.`);

@@ -98,11 +98,16 @@ describe("cekCap (keputusan poin 4: diajukan + sudah disetujui ≤ pencadangan)"
   });
 });
 
-describe("cekFinal (keputusan poin 5: tolak bila job asal ATAU tujuan FINAL)", () => {
-  it("lolos bila keduanya belum FINAL", () => {
+/*
+ * Irisan 5 (Q-IRIS5-8): FINAL dan DIBATALKAN sama-sama terminal - cekFinal
+ * kini mendelegasikan ke isLocked() modul state-machine. Ini MEMPERKETAT
+ * aturan 4e (dulu DIBATALKAN lolos), bukan melonggarkan test.
+ */
+describe("cekFinal (Irisan 5: tolak bila asal/tujuan terkunci FINAL|DIBATALKAN)", () => {
+  it("lolos bila keduanya belum terkunci", () => {
     expect(cekFinal("DRAFT", "DRAFT").ok).toBe(true);
     expect(cekFinal("DISETUJUI_1", "DIAJUKAN").ok).toBe(true);
-    expect(cekFinal("DIBATALKAN", "DRAFT").ok).toBe(true); // status lain tak dikunci di 4e
+    expect(cekFinal("DIAJUKAN", "UNLOCK_REQUESTED").ok).toBe(true);
   });
 
   it("tolak bila job asal FINAL", () => {
@@ -115,6 +120,18 @@ describe("cekFinal (keputusan poin 5: tolak bila job asal ATAU tujuan FINAL)", (
     const hasil = cekFinal("DRAFT", "FINAL");
     expect(hasil.ok).toBe(false);
     if (!hasil.ok) expect(hasil.error).toMatch(/tujuan.*FINAL/);
+  });
+
+  it("tolak bila job asal DIBATALKAN (Q-IRIS5-8 - kini terkunci)", () => {
+    const hasil = cekFinal("DIBATALKAN", "DRAFT");
+    expect(hasil.ok).toBe(false);
+    if (!hasil.ok) expect(hasil.error).toMatch(/asal.*DIBATALKAN/);
+  });
+
+  it("tolak bila job tujuan DIBATALKAN (Q-IRIS5-8)", () => {
+    const hasil = cekFinal("DRAFT", "DIBATALKAN");
+    expect(hasil.ok).toBe(false);
+    if (!hasil.ok) expect(hasil.error).toMatch(/tujuan.*DIBATALKAN/);
   });
 });
 

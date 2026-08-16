@@ -1,0 +1,2640 @@
+{
+  "id": "744f3ac5-b3de-40bb-8cdc-e74ed8ff8f08",
+  "prevId": "c82d5612-2c63-4c2e-89e5-fc37b4bc7e7d",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.approvals": {
+      "name": "approvals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cycle": {
+          "name": "cycle",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "tingkat": {
+          "name": "tingkat",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approver_id": {
+          "name": "approver_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "catatan": {
+          "name": "catatan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_approval_sekali": {
+          "name": "uq_approval_sekali",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "cycle",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tingkat",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "approvals_job_id_jobs_id_fk": {
+          "name": "approvals_job_id_jobs_id_fk",
+          "tableFrom": "approvals",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "approvals_approver_id_users_id_fk": {
+          "name": "approvals_approver_id_users_id_fk",
+          "tableFrom": "approvals",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approver_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.audit_log": {
+      "name": "audit_log",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aksi": {
+          "name": "aksi",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entitas": {
+          "name": "entitas",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entitas_id": {
+          "name": "entitas_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sebelum": {
+          "name": "sebelum",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sesudah": {
+          "name": "sesudah",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_audit_entitas": {
+          "name": "idx_audit_entitas",
+          "columns": [
+            {
+              "expression": "entitas",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entitas_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_audit_waktu": {
+          "name": "idx_audit_waktu",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "audit_log_user_id_users_id_fk": {
+          "name": "audit_log_user_id_users_id_fk",
+          "tableFrom": "audit_log",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.charge_codes": {
+      "name": "charge_codes",
+      "schema": "",
+      "columns": {
+        "kode": {
+          "name": "kode",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "keterangan": {
+          "name": "keterangan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name_id": {
+          "name": "name_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_reimburse": {
+          "name": "default_reimburse",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "butuh_vendor": {
+          "name": "butuh_vendor",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "kategori": {
+          "name": "kategori",
+          "type": "charge_code_kategori",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'OPSIONAL'"
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_leg": {
+          "name": "default_leg",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_taxable": {
+          "name": "is_taxable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "is_at_cost_default": {
+          "name": "is_at_cost_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pph23_applicable": {
+          "name": "pph23_applicable",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "segment_scope": {
+          "name": "segment_scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'BOTH'"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_charge_code_segment_scope": {
+          "name": "ck_charge_code_segment_scope",
+          "value": "\"segment_scope\" IN ('DOM', 'EXIM', 'BOTH')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.charge_lines": {
+      "name": "charge_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charge_code": {
+          "name": "charge_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_id": {
+          "name": "vendor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "keterangan": {
+          "name": "keterangan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "selling_idr": {
+          "name": "selling_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "pencadangan_idr": {
+          "name": "pencadangan_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "actual_idr": {
+          "name": "actual_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "selling_usd": {
+          "name": "selling_usd",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pencadangan_usd": {
+          "name": "pencadangan_usd",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actual_usd": {
+          "name": "actual_usd",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "selisih_idr": {
+          "name": "selisih_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false,
+          "generated": {
+            "as": "pencadangan_idr - actual_idr",
+            "type": "stored"
+          }
+        },
+        "is_reimburse": {
+          "name": "is_reimburse",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_at_cost": {
+          "name": "is_at_cost",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "leg": {
+          "name": "leg",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'IDR'"
+        },
+        "urutan": {
+          "name": "urutan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "idx_charge_job": {
+          "name": "idx_charge_job",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_charge_vendor": {
+          "name": "idx_charge_vendor",
+          "columns": [
+            {
+              "expression": "vendor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "charge_lines_job_id_jobs_id_fk": {
+          "name": "charge_lines_job_id_jobs_id_fk",
+          "tableFrom": "charge_lines",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "charge_lines_charge_code_charge_codes_kode_fk": {
+          "name": "charge_lines_charge_code_charge_codes_kode_fk",
+          "tableFrom": "charge_lines",
+          "tableTo": "charge_codes",
+          "columnsFrom": [
+            "charge_code"
+          ],
+          "columnsTo": [
+            "kode"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "charge_lines_vendor_id_vendors_id_fk": {
+          "name": "charge_lines_vendor_id_vendors_id_fk",
+          "tableFrom": "charge_lines",
+          "tableTo": "vendors",
+          "columnsFrom": [
+            "vendor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "charge_lines_created_by_users_id_fk": {
+          "name": "charge_lines_created_by_users_id_fk",
+          "tableFrom": "charge_lines",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_charge_line_leg": {
+          "name": "ck_charge_line_leg",
+          "value": "\"leg\" IS NULL OR \"leg\" IN (1, 2, 3)"
+        },
+        "ck_charge_line_currency": {
+          "name": "ck_charge_line_currency",
+          "value": "\"currency\" IN ('IDR', 'USD')"
+        },
+        "ck_charge_line_at_cost": {
+          "name": "ck_charge_line_at_cost",
+          "value": "NOT \"is_at_cost\" OR \"selling_idr\" = \"pencadangan_idr\""
+        },
+        "ck_charge_line_usd_native": {
+          "name": "ck_charge_line_usd_native",
+          "value": "\"currency\" = 'USD'\n\t\t\t    OR (\"selling_usd\" IS NULL AND \"pencadangan_usd\" IS NULL AND \"actual_usd\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cost_reallocations": {
+      "name": "cost_reallocations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "origin_charge_line_id": {
+          "name": "origin_charge_line_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin_job_id": {
+          "name": "origin_job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "destination_job_id": {
+          "name": "destination_job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jumlah_idr": {
+          "name": "jumlah_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_realloc_origin_job": {
+          "name": "idx_realloc_origin_job",
+          "columns": [
+            {
+              "expression": "origin_job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_realloc_dest_job": {
+          "name": "idx_realloc_dest_job",
+          "columns": [
+            {
+              "expression": "destination_job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "cost_reallocations_origin_charge_line_id_charge_lines_id_fk": {
+          "name": "cost_reallocations_origin_charge_line_id_charge_lines_id_fk",
+          "tableFrom": "cost_reallocations",
+          "tableTo": "charge_lines",
+          "columnsFrom": [
+            "origin_charge_line_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "cost_reallocations_origin_job_id_jobs_id_fk": {
+          "name": "cost_reallocations_origin_job_id_jobs_id_fk",
+          "tableFrom": "cost_reallocations",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "origin_job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_reallocations_destination_job_id_jobs_id_fk": {
+          "name": "cost_reallocations_destination_job_id_jobs_id_fk",
+          "tableFrom": "cost_reallocations",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "destination_job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_reallocations_created_by_users_id_fk": {
+          "name": "cost_reallocations_created_by_users_id_fk",
+          "tableFrom": "cost_reallocations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_reallocations_approved_by_users_id_fk": {
+          "name": "cost_reallocations_approved_by_users_id_fk",
+          "tableFrom": "cost_reallocations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_realloc_not_self": {
+          "name": "ck_realloc_not_self",
+          "value": "\"cost_reallocations\".\"origin_job_id\" != \"cost_reallocations\".\"destination_job_id\""
+        },
+        "ck_realloc_positive": {
+          "name": "ck_realloc_positive",
+          "value": "\"cost_reallocations\".\"jumlah_idr\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.cost_reopen_requests": {
+      "name": "cost_reopen_requests",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "requested_by": {
+          "name": "requested_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "co_signed_by": {
+          "name": "co_signed_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "berita_acara_file_url": {
+          "name": "berita_acara_file_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nilai_tambahan_idr": {
+          "name": "nilai_tambahan_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "reopen_request_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DIAJUKAN'"
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "catatan_keputusan": {
+          "name": "catatan_keputusan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "cost_reopen_requests_job_id_jobs_id_fk": {
+          "name": "cost_reopen_requests_job_id_jobs_id_fk",
+          "tableFrom": "cost_reopen_requests",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "cost_reopen_requests_requested_by_users_id_fk": {
+          "name": "cost_reopen_requests_requested_by_users_id_fk",
+          "tableFrom": "cost_reopen_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "requested_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_reopen_requests_co_signed_by_users_id_fk": {
+          "name": "cost_reopen_requests_co_signed_by_users_id_fk",
+          "tableFrom": "cost_reopen_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "co_signed_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "cost_reopen_requests_decided_by_users_id_fk": {
+          "name": "cost_reopen_requests_decided_by_users_id_fk",
+          "tableFrom": "cost_reopen_requests",
+          "tableTo": "users",
+          "columnsFrom": [
+            "decided_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_invoice_addenda": {
+      "name": "customer_invoice_addenda",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "original_invoice_id": {
+          "name": "original_invoice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "addendum_seq": {
+          "name": "addendum_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label_internal": {
+          "name": "label_internal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_idr": {
+          "name": "amount_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "dpp_idr": {
+          "name": "dpp_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ppn_idr": {
+          "name": "ppn_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pph23_applied": {
+          "name": "pph23_applied",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pph23_idr": {
+          "name": "pph23_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "grand_total_idr": {
+          "name": "grand_total_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax_rule_version": {
+          "name": "tax_rule_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_month": {
+          "name": "issue_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_year": {
+          "name": "issue_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "invoice_addendum_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_addendum": {
+          "name": "uq_addendum",
+          "columns": [
+            {
+              "expression": "original_invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "addendum_seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_addendum_original": {
+          "name": "idx_addendum_original",
+          "columns": [
+            {
+              "expression": "original_invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "customer_invoice_addenda_original_invoice_id_customer_invoices_id_fk": {
+          "name": "customer_invoice_addenda_original_invoice_id_customer_invoices_id_fk",
+          "tableFrom": "customer_invoice_addenda",
+          "tableTo": "customer_invoices",
+          "columnsFrom": [
+            "original_invoice_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customer_invoice_addenda_created_by_users_id_fk": {
+          "name": "customer_invoice_addenda_created_by_users_id_fk",
+          "tableFrom": "customer_invoice_addenda",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customer_invoice_addenda_approved_by_users_id_fk": {
+          "name": "customer_invoice_addenda_approved_by_users_id_fk",
+          "tableFrom": "customer_invoice_addenda",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.customer_invoices": {
+      "name": "customer_invoices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "job_id": {
+          "name": "job_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "inv_type": {
+          "name": "inv_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_year": {
+          "name": "issue_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_month": {
+          "name": "issue_month",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "running": {
+          "name": "running",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invoice_no": {
+          "name": "invoice_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_date": {
+          "name": "issue_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sub_total_idr": {
+          "name": "sub_total_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reimburse_idr": {
+          "name": "reimburse_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "dpp_idr": {
+          "name": "dpp_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ppn_idr": {
+          "name": "ppn_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pph23_idr": {
+          "name": "pph23_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "grand_total_idr": {
+          "name": "grand_total_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tax_rule_version": {
+          "name": "tax_rule_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "invoice_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "pod_diterima_at": {
+          "name": "pod_diterima_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "issued_before_pod": {
+          "name": "issued_before_pod",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "early_issue_approved_by": {
+          "name": "early_issue_approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_inv": {
+          "name": "uq_inv",
+          "columns": [
+            {
+              "expression": "inv_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "issue_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "issue_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "running",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_inv_job": {
+          "name": "idx_inv_job",
+          "columns": [
+            {
+              "expression": "job_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "customer_invoices_job_id_jobs_id_fk": {
+          "name": "customer_invoices_job_id_jobs_id_fk",
+          "tableFrom": "customer_invoices",
+          "tableTo": "jobs",
+          "columnsFrom": [
+            "job_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "customer_invoices_early_issue_approved_by_users_id_fk": {
+          "name": "customer_invoices_early_issue_approved_by_users_id_fk",
+          "tableFrom": "customer_invoices",
+          "tableTo": "users",
+          "columnsFrom": [
+            "early_issue_approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_early_issue_needs_approval": {
+          "name": "ck_early_issue_needs_approval",
+          "value": "(issued_before_pod = false) OR (early_issue_approved_by IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.customers": {
+      "name": "customers",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legal_name": {
+          "name": "legal_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "npwp": {
+          "name": "npwp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "alamat": {
+          "name": "alamat",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "top_hari": {
+          "name": "top_hari",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pph23_default": {
+          "name": "pph23_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.invoice_sequence": {
+      "name": "invoice_sequence",
+      "schema": "",
+      "columns": {
+        "inv_type": {
+          "name": "inv_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_year": {
+          "name": "issue_year",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_month": {
+          "name": "issue_month",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_running": {
+          "name": "last_running",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "invoice_sequence_inv_type_issue_year_issue_month_pk": {
+          "name": "invoice_sequence_inv_type_issue_year_issue_month_pk",
+          "columns": [
+            "inv_type",
+            "issue_year",
+            "issue_month"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_inv_seq_type": {
+          "name": "ck_inv_seq_type",
+          "value": "inv_type IN ('INVDOM', 'INVEXP', 'INVIMP')"
+        },
+        "ck_inv_seq_month": {
+          "name": "ck_inv_seq_month",
+          "value": "issue_month BETWEEN 1 AND 12"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.job_sequence": {
+      "name": "job_sequence",
+      "schema": "",
+      "columns": {
+        "seq_scope": {
+          "name": "seq_scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tahun": {
+          "name": "tahun",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bulan": {
+          "name": "bulan",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_running": {
+          "name": "last_running",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "job_sequence_seq_scope_tahun_bulan_pk": {
+          "name": "job_sequence_seq_scope_tahun_bulan_pk",
+          "columns": [
+            "seq_scope",
+            "tahun",
+            "bulan"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_job_seq_scope": {
+          "name": "ck_job_seq_scope",
+          "value": "seq_scope IN ('DOM', 'EXP', 'IMP')"
+        },
+        "ck_job_seq_bulan": {
+          "name": "ck_job_seq_bulan",
+          "value": "bulan BETWEEN 1 AND 12"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.jobs": {
+      "name": "jobs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "seq_scope": {
+          "name": "seq_scope",
+          "type": "seq_scope",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tahun": {
+          "name": "tahun",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bulan": {
+          "name": "bulan",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "running": {
+          "name": "running",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "job_no": {
+          "name": "job_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "suffix": {
+          "name": "suffix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_id": {
+          "name": "customer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "leg_trucking": {
+          "name": "leg_trucking",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "leg_freight": {
+          "name": "leg_freight",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "leg_delivery": {
+          "name": "leg_delivery",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "leg_override_alasan": {
+          "name": "leg_override_alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "service_type": {
+          "name": "service_type",
+          "type": "service_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rute": {
+          "name": "rute",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vessel": {
+          "name": "vessel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "etd": {
+          "name": "etd",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sales": {
+          "name": "sales",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "selling_idr": {
+          "name": "selling_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "ppn_idr": {
+          "name": "ppn_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "selling_usd": {
+          "name": "selling_usd",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kurs_x100": {
+          "name": "kurs_x100",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "job_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "approval_cycle": {
+          "name": "approval_cycle",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "maker_id": {
+          "name": "maker_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "uq_job_nomor": {
+          "name": "uq_job_nomor",
+          "columns": [
+            {
+              "expression": "seq_scope",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tahun",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bulan",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "running",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_customer": {
+          "name": "idx_job_customer",
+          "columns": [
+            {
+              "expression": "customer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_status": {
+          "name": "idx_job_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_periode": {
+          "name": "idx_job_periode",
+          "columns": [
+            {
+              "expression": "tahun",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bulan",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_sales": {
+          "name": "idx_job_sales",
+          "columns": [
+            {
+              "expression": "sales",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tahun",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bulan",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_job_rute": {
+          "name": "idx_job_rute",
+          "columns": [
+            {
+              "expression": "rute",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "tahun",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "bulan",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "jobs_customer_id_customers_id_fk": {
+          "name": "jobs_customer_id_customers_id_fk",
+          "tableFrom": "jobs",
+          "tableTo": "customers",
+          "columnsFrom": [
+            "customer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "jobs_maker_id_users_id_fk": {
+          "name": "jobs_maker_id_users_id_fk",
+          "tableFrom": "jobs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "maker_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "ck_legs": {
+          "name": "ck_legs",
+          "value": "NOT (\"jobs\".\"leg_trucking\" AND \"jobs\".\"leg_delivery\" AND NOT \"jobs\".\"leg_freight\")\n\t\t\t    AND (\"jobs\".\"leg_trucking\" OR \"jobs\".\"leg_freight\" OR \"jobs\".\"leg_delivery\")"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.ports": {
+      "name": "ports",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kode": {
+          "name": "kode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "negara": {
+          "name": "negara",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ID'"
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ports_kode_unique": {
+          "name": "ports_kode_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "kode"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.ship_lines": {
+      "name": "ship_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "kode": {
+          "name": "kode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "ship_lines_kode_unique": {
+          "name": "ship_lines_kode_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "kode"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.users": {
+      "name": "users",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'STAFF'"
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "users_email_unique": {
+          "name": "users_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "email"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vendor_invoice_addenda": {
+      "name": "vendor_invoice_addenda",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "original_vendor_invoice_id": {
+          "name": "original_vendor_invoice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "addendum_seq": {
+          "name": "addendum_seq",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label_internal": {
+          "name": "label_internal",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "alasan": {
+          "name": "alasan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jumlah_idr": {
+          "name": "jumlah_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pph23_applied": {
+          "name": "pph23_applied",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "pph23_idr": {
+          "name": "pph23_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "issue_month": {
+          "name": "issue_month",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "issue_year": {
+          "name": "issue_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "invoice_addendum_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DRAFT'"
+        },
+        "created_by": {
+          "name": "created_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "approved_by": {
+          "name": "approved_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dibayar_at": {
+          "name": "dibayar_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_vendor_addendum": {
+          "name": "uq_vendor_addendum",
+          "columns": [
+            {
+              "expression": "original_vendor_invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "addendum_seq",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_vendor_addendum_original": {
+          "name": "idx_vendor_addendum_original",
+          "columns": [
+            {
+              "expression": "original_vendor_invoice_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vendor_invoice_addenda_original_vendor_invoice_id_vendor_invoices_id_fk": {
+          "name": "vendor_invoice_addenda_original_vendor_invoice_id_vendor_invoices_id_fk",
+          "tableFrom": "vendor_invoice_addenda",
+          "tableTo": "vendor_invoices",
+          "columnsFrom": [
+            "original_vendor_invoice_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vendor_invoice_addenda_created_by_users_id_fk": {
+          "name": "vendor_invoice_addenda_created_by_users_id_fk",
+          "tableFrom": "vendor_invoice_addenda",
+          "tableTo": "users",
+          "columnsFrom": [
+            "created_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vendor_invoice_addenda_approved_by_users_id_fk": {
+          "name": "vendor_invoice_addenda_approved_by_users_id_fk",
+          "tableFrom": "vendor_invoice_addenda",
+          "tableTo": "users",
+          "columnsFrom": [
+            "approved_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vendor_invoice_lines": {
+      "name": "vendor_invoice_lines",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "vendor_invoice_id": {
+          "name": "vendor_invoice_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "charge_line_id": {
+          "name": "charge_line_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jumlah_idr": {
+          "name": "jumlah_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "vendor_invoice_lines_vendor_invoice_id_vendor_invoices_id_fk": {
+          "name": "vendor_invoice_lines_vendor_invoice_id_vendor_invoices_id_fk",
+          "tableFrom": "vendor_invoice_lines",
+          "tableTo": "vendor_invoices",
+          "columnsFrom": [
+            "vendor_invoice_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "vendor_invoice_lines_charge_line_id_charge_lines_id_fk": {
+          "name": "vendor_invoice_lines_charge_line_id_charge_lines_id_fk",
+          "tableFrom": "vendor_invoice_lines",
+          "tableTo": "charge_lines",
+          "columnsFrom": [
+            "charge_line_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vendor_invoices": {
+      "name": "vendor_invoices",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "vendor_id": {
+          "name": "vendor_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "vendor_invoice_no": {
+          "name": "vendor_invoice_no",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tanggal_invoice": {
+          "name": "tanggal_invoice",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "jumlah_idr": {
+          "name": "jumlah_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "pph23_idr": {
+          "name": "pph23_idr",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "0"
+        },
+        "status": {
+          "name": "status",
+          "type": "vendor_invoice_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'DITERIMA'"
+        },
+        "dibayar_at": {
+          "name": "dibayar_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dibayar_oleh": {
+          "name": "dibayar_oleh",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "uq_vendor_invoice": {
+          "name": "uq_vendor_invoice",
+          "columns": [
+            {
+              "expression": "vendor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "vendor_invoice_no",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_vinv_vendor": {
+          "name": "idx_vinv_vendor",
+          "columns": [
+            {
+              "expression": "vendor_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_vinv_status": {
+          "name": "idx_vinv_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "vendor_invoices_vendor_id_vendors_id_fk": {
+          "name": "vendor_invoices_vendor_id_vendors_id_fk",
+          "tableFrom": "vendor_invoices",
+          "tableTo": "vendors",
+          "columnsFrom": [
+            "vendor_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "vendor_invoices_dibayar_oleh_users_id_fk": {
+          "name": "vendor_invoices_dibayar_oleh_users_id_fk",
+          "tableFrom": "vendor_invoices",
+          "tableTo": "users",
+          "columnsFrom": [
+            "dibayar_oleh"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.vendors": {
+      "name": "vendors",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "nama": {
+          "name": "nama",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "legal_name": {
+          "name": "legal_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "npwp": {
+          "name": "npwp",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "vendor_type": {
+          "name": "vendor_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_term": {
+          "name": "payment_term",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_term_days": {
+          "name": "payment_term_days",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "pph23_default": {
+          "name": "pph23_default",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.charge_code_kategori": {
+      "name": "charge_code_kategori",
+      "schema": "public",
+      "values": [
+        "FIXED",
+        "OPSIONAL"
+      ]
+    },
+    "public.invoice_addendum_status": {
+      "name": "invoice_addendum_status",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "DISETUJUI",
+        "ISSUED"
+      ]
+    },
+    "public.invoice_status": {
+      "name": "invoice_status",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "TERBIT",
+        "TERKIRIM",
+        "LUNAS",
+        "BATAL"
+      ]
+    },
+    "public.job_status": {
+      "name": "job_status",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "DIAJUKAN",
+        "DISETUJUI_1",
+        "FINAL",
+        "UNLOCK_REQUESTED",
+        "DIBATALKAN"
+      ]
+    },
+    "public.reopen_request_status": {
+      "name": "reopen_request_status",
+      "schema": "public",
+      "values": [
+        "DIAJUKAN",
+        "DISETUJUI",
+        "DITOLAK"
+      ]
+    },
+    "public.role": {
+      "name": "role",
+      "schema": "public",
+      "values": [
+        "OWNER",
+        "MANAGER",
+        "STAFF"
+      ]
+    },
+    "public.seq_scope": {
+      "name": "seq_scope",
+      "schema": "public",
+      "values": [
+        "DOM",
+        "EXP",
+        "IMP"
+      ]
+    },
+    "public.service_type": {
+      "name": "service_type",
+      "schema": "public",
+      "values": [
+        "FCL",
+        "LCL",
+        "AF"
+      ]
+    },
+    "public.vendor_invoice_status": {
+      "name": "vendor_invoice_status",
+      "schema": "public",
+      "values": [
+        "DITERIMA",
+        "DIVERIFIKASI",
+        "DIBAYAR",
+        "DIBATALKAN"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

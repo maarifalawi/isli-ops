@@ -3,6 +3,7 @@ import { chargeCodes, chargeLines, costReallocations, jobs } from "@/db/schema/i
 import { writeAudit } from "@/lib/audit/index";
 import { AuthorizationError, assertCan } from "@/lib/authz/index";
 import { konversiUsdKeIdr } from "@/lib/money/index";
+import { isEditable } from "@/lib/state-machine/index";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   type ChargeLineFields,
@@ -23,10 +24,12 @@ import {
  * hitung GP/GP%/NETT, realokasi biaya antar job (4c-4e). currency hanya
  * penanda tampilan; nilai disimpan apa adanya.
  *
- * BATASAN DISENGAJA (Irisan 5, bukan 4b): pembatasan "STAFF hanya boleh
- * mengedit job miliknya" dan "job FINAL terkunci" BELUM ditegakkan di sini.
- * Keduanya bagian approval/state-machine (R6.3, RBAC job.edit_draft "sendiri").
- * assertCan("job:edit") sudah menolak peran tak berwenang; sisanya menyusul.
+ * Irisan 5 - dua guard kini DITEGAKKAN di sini (Q-IRIS5-4 & Q-IRIS5-8):
+ *   1. isEditable(job.status): hanya DRAFT yang boleh diedit - angka beku
+ *      setelah diajukan (menunggu reject/unlock untuk bisa diedit lagi).
+ *   2. STAFF hanya boleh mengedit job miliknya (jobs.maker_id = user.id);
+ *      OWNER/MANAGER bebas.
+ * assertCan("job:edit") tetap baris pertama - peran tak berwenang ditolak.
  *
  * Semua uang bigint rupiah bulat (ADR-0002). Tidak ada float, tidak ada
  * aritmetika uang inline selain SUM sederhana yang tidak ada di sini.
@@ -92,6 +95,42 @@ function cekWewenang(
   } catch (e) {
     return salahWewenang(e);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Guard Irisan 5: status job harus DRAFT (isEditable) + STAFF scope maker.
+// ---------------------------------------------------------------------------
+
+/** Ambil konteks job untuk guard; null bila tidak ada. */
+async function ambilJobUntukGuard(
+  tx: Tx,
+  jobId: string,
+): Promise<{ status: string; makerId: string } | null> {
+  const [row] = await tx
+    .select({ status: jobs.status, makerId: jobs.makerId })
+    .from(jobs)
+    .where(eq(jobs.id, jobId));
+  return row ?? null;
+}
+
+/**
+ * Tolak bila job tidak DRAFT (Q-IRIS5-8) atau STAFF bukan maker (Q-IRIS5-4).
+ * Mengembalikan pesan error, atau null bila lolos.
+ */
+async function cekGuardIrisan5(
+  tx: Tx,
+  user: PelaksanaChargeLine,
+  jobId: string,
+): Promise<string | null> {
+  const job = await ambilJobUntukGuard(tx, jobId);
+  if (!job) return "Job tidak ditemukan.";
+  if (!isEditable(job.status as Parameters<typeof isEditable>[0])) {
+    return `Job berstatus ${job.status} - baris biaya hanya boleh diedit saat job masih DRAFT (Irisan 5, J-INV-1).`;
+  }
+  if (user.role === "STAFF" && job.makerId !== user.id) {
+    return "STAFF hanya boleh mengedit baris biaya pada job miliknya sendiri (RBAC job.edit_draft).";
+  }
+  return null;
 }
 
 /** Integer bulat → bigint; tolak pecahan/NaN. null/undefined → 0n. */
@@ -314,8 +353,8 @@ export async function createChargeLine(
   if (!jobId) return gagal("Job wajib dipilih.");
 
   return dbOrTx.transaction(async (tx) => {
-    const [job] = await tx.select({ id: jobs.id }).from(jobs).where(eq(jobs.id, jobId));
-    if (!job) return gagal("Job tidak ditemukan.");
+    const guard = await cekGuardIrisan5(tx, user, jobId);
+    if (guard) return gagal(guard);
 
     const val = await validasiDenganMaster(tx, { ...input, jobId });
     if (!val.ok) return gagal(val.error);
@@ -376,6 +415,9 @@ export async function updateChargeLine(
       .where(eq(chargeLines.id, lineId));
     if (!sebelum) return gagal("Baris biaya tidak ditemukan.");
     if (sebelum.deletedAt) return gagal("Baris biaya sudah dihapus; tidak bisa diubah.");
+
+    const guard = await cekGuardIrisan5(tx, user, sebelum.jobId);
+    if (guard) return gagal(guard);
 
     const val = await validasiDenganMaster(tx, { ...input, jobId: sebelum.jobId });
     if (!val.ok) return gagal(val.error);
@@ -439,6 +481,9 @@ export async function hapusChargeLine(
       .where(eq(chargeLines.id, lineId));
     if (!sebelum) return gagal("Baris biaya tidak ditemukan.");
     if (sebelum.deletedAt) return gagal("Baris biaya sudah dihapus.");
+
+    const guard = await cekGuardIrisan5(tx, user, sebelum.jobId);
+    if (guard) return gagal(guard);
 
     /*
      * Guard Irisan 4e (keputusan poin 6): baris yang punya proposal realokasi
