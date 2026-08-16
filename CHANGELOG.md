@@ -42,3 +42,24 @@
 - 34 pertanyaan discovery disusun (12 blocker)
 - 7 ADR (5 accepted, 2 proposed menunggu keputusan klien)
 - Identitas legal ISLI diekstrak dari kop surat (NPWP masih kosong)
+
+
+## Irisan 5 - State Machine Job + Approval L1 & Final + Guard (2026-08-17)
+
+- Migrasi `0005_iris5_state_machine`: enum `job_status` +UNLOCK_REQUESTED;
+  `jobs.approval_cycle` (NOT NULL DEFAULT 1).
+- Modul baru `src/lib/state-machine/`: tabel transisi murni (9 transisi,
+  persis STATE-MACHINE.md) + predikat isFinal/isLocked/isEditable + service
+  transisi 8 aksi (submit/cancel/approve_l1/reject/approve_final/
+  request_unlock/unlock_granted/unlock_denied) dengan row-lock +
+  guard status-lama (anti-race), approval cycle reset (R6.2), berita acara
+  wajib (R6.4), J-INV-3/4 (unlock diblokir invoice terbit).
+- Authz +3 izin: job:cancel, job:reject, job:request_unlock (Q-IRIS5-4).
+- Audit +8 aksi transisi (alasan wajib REJECT/REQUEST_UNLOCK/UNLOCK_DENIED).
+- Guard 4b: create/update/hapus charge line kini cek isEditable(DRAFT) +
+  scope STAFF maker_id. Guard 4e: cekFinal mendelegasikan ke isLocked
+  (FINAL|DIBATALKAN) - Q-IRIS5-8.
+- Test: unit state-machine 10, integrasi 28 (alur penuh, cycle, race paralel,
+  berita acara, DIBATALKAN terminal). Semua keputusan Q-IRIS5-1..8 terkunci test.
+- Docs: STATE-MACHINE.md (mapping nama + J-INV-7/8 + hapus stale reallocate),
+  RBAC.md, ERD.md, OPEN-QUESTIONS.md.

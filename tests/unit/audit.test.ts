@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
-import { writeAudit } from "@/lib/audit/index";
+import { type AKSI_AUDIT, writeAudit } from "@/lib/audit/index";
 import { describe, expect, it, vi } from "vitest";
 
 /** Fake tx: cukup punya insert().values(), persis potongan yang dipakai helper. */
@@ -128,6 +128,30 @@ describe("writeAudit", () => {
         sesudah: JSON.stringify({ jumlahIdr: "2500000" }),
       }),
     );
+  });
+
+  // ── Irisan 5: aksi transisi state machine (Q-IRIS5-7) ────────────────────
+  it.each(["REJECT", "REQUEST_UNLOCK", "UNLOCK_DENIED"])(
+    "%s tanpa alasan DITOLAK (alasan wajib)",
+    async (aksi) => {
+      const { tx, insert } = fakeTx();
+      await expect(
+        writeAudit(tx, {
+          userId: "u-6",
+          aksi: aksi as (typeof AKSI_AUDIT)[number],
+          entitas: "JOB",
+          alasan: "  ",
+        }),
+      ).rejects.toThrow(/alasan WAJIB/);
+      expect(insert).not.toHaveBeenCalled();
+    },
+  );
+
+  it("SUBMIT & APPROVE_L1 tanpa alasan DITERIMA (opsional)", async () => {
+    const { tx, insert } = fakeTx();
+    await writeAudit(tx, { userId: "u-6", aksi: "SUBMIT", entitas: "JOB" });
+    await writeAudit(tx, { userId: "u-7", aksi: "APPROVE_L1", entitas: "JOB" });
+    expect(insert).toHaveBeenCalledTimes(2);
   });
 });
 

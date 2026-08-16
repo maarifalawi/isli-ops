@@ -21,8 +21,11 @@ export const ACTIONS = [
   "job:create",
   "job:edit",
   "job:submit",
+  "job:cancel",
   "job:approve_first",
   "job:approve_final",
+  "job:reject",
+  "job:request_unlock",
   "job:unlock",
   "job:view_margin",
   "job:reallocate",
@@ -59,6 +62,16 @@ export type Action = (typeof ACTIONS)[number];
  * src/lib/realokasi. Sengaja tidak diberi ke STAFF supaya "staff bisa
  * mengajukan, tapi tidak bisa meloloskan ajakannya sendiri" — approver ≠
  * pembuat tetap ditegakkan lewat assertNotSelfApproval (R-A1).
+ *
+ * Irisan 5 — tiga izin transisi state machine (keputusan user Q-IRIS5-4,
+ * 17 Agu 2026; RBAC.md diperbarui di commit yang sama):
+ *   job:cancel         O✓ M✓ S✓ — cancel hanya dari DRAFT; STAFF hanya
+ *                      untuk job miliknya (cek maker_id di service, bukan izin).
+ *   job:reject         O✓ M✓ S✗ — reject di DIAJUKAN (Manager) atau
+ *                      DISETUJUI_1 (Owner); siapa-boleh-apa per status
+ *                      ditegakkan di src/lib/state-machine.
+ *   job:request_unlock O✓ M✓ S✗ — sudah ada di RBAC.md sejak awal, kini
+ *                      dipakai nyata oleh transisi request_unlock.
  */
 const PERMISSIONS: Readonly<Record<Role, ReadonlySet<Action>>> = {
   OWNER: new Set<Action>(ACTIONS),
@@ -66,7 +79,10 @@ const PERMISSIONS: Readonly<Record<Role, ReadonlySet<Action>>> = {
     "job:create",
     "job:edit",
     "job:submit",
+    "job:cancel",
     "job:approve_first",
+    "job:reject",
+    "job:request_unlock",
     "job:view_margin",
     "job:reallocate",
     "invoice:create",
@@ -80,6 +96,7 @@ const PERMISSIONS: Readonly<Record<Role, ReadonlySet<Action>>> = {
     "job:create",
     "job:edit",
     "job:submit",
+    "job:cancel",
     "job:view_margin",
     "invoice:create",
     "vendor_invoice:create",

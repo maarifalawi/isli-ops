@@ -384,3 +384,35 @@ GRAND TOTAL yang direkonsiliasi.
 Q64 dan Q19 TETAP MENUNGGU — default konservatif dipertahankan (Q64: semua kode
 butuh vendor; Q19: semua job wajib >=1 leg).
 
+
+
+---
+
+# Irisan 5 - State Machine Job: Q-IRIS5-1..8 (dicatat & dijawab 17 Agu 2026)
+
+Dicatat saat Tahap 1-3 Irisan 5, DIJAWAB user di sesi yang sama, dan
+diimplementasikan (migrasi 0005 + src/lib/state-machine/):
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| Q-IRIS5-1 | Representasi UNLOCK_REQUESTED: state enum vs turunan cost_reopen_requests? | **TAMBAH KE ENUM** - state nyata (2 transisi keluar); detail tetap di cost_reopen_requests; job bisa di-filter by status langsung. |
+| Q-IRIS5-2 | Nama status: dokumen (SUBMITTED/APPROVED_L1/CANCELLED) vs skema (DIAJUKAN/DISETUJUI_1/DIBATALKAN)? | **SKEMA MENANG** - mapping dicatat di STATE-MACHINE.md; JANGAN ubah enum lama (break data). |
+| Q-IRIS5-3 | Mekanisme reset approval vs uq_approval_sekali? | **KOLOM jobs.approval_cycle** (NOT NULL DEFAULT 1) - naik saat setiap reject & unlock_granted; approval cycle lama tetap tersimpan tapi gugur. |
+| Q-IRIS5-4 | Izin baru + definisi "miliknya" STAFF? | +job:cancel (O/M/S; S hanya miliknya), +job:reject (O/M; M hanya di DIAJUKAN, O di kedua), +job:request_unlock (O/M) sudah ada di RBAC kini terpakai. "Miliknya" = jobs.maker_id. Alias job.approve_1 -> job:approve_first (kode menang). |
+| Q-IRIS5-5 | Approver L1 = approver Final (orang sama)? | **BOLEH** - J-INV-5 hanya approver != maker; tidak ada aturan approver_L1 != approver_Final. |
+| Q-IRIS5-6 | Definisi syarat submit "tidak kosong"? | >=1 baris aktif selling_idr>0 DAN >=1 baris pencadangan_idr>0 (deleted_at IS NULL); "invariant costing lolos" = CHECK DB sudah cukup. |
+| Q-IRIS5-7 | Bentuk aksi audit transisi? | **SPESIFIK per transisi**: SUBMIT, CANCEL, APPROVE_L1, REJECT, APPROVE_FINAL, REQUEST_UNLOCK, UNLOCK_GRANTED, UNLOCK_DENIED. Alasan wajib utk REJECT/REQUEST_UNLOCK/UNLOCK_DENIED. |
+| Q-IRIS5-8 | Edit pada job DIBATALKAN? | **TERKUNCI** - isLocked = FINAL|DIBATALKAN; isEditable = hanya DRAFT; isFinal = hanya FINAL (J-INV-3/4); cekFinal 4e diganti isLocked. |
+
+Tambahan keputusan sesi yang sama:
+- **Q79 tidak memblokir 5**: berita_acara_file_url = free-form string wajib;
+  template baku tetap MENUNGGU (Q79).
+- **Q56 (MANAGER maker -> siapa approve L1?)**: OWNER (konsekuensi R-A1,
+  ditangani otomatis assertNotSelfApproval).
+
+Temuan stale yang ikut dibersihkan saat Irisan 5:
+- STATE-MACHINE.md S4 "reallocate menunggu ADR-0006" -> sudah Accepted 13 Agu
+  2026 + 4e terimplementasi; bagian itu diperbarui.
+- ERD.md tabel approval memakai level TEXT ('L1','FINAL') + kolom action;
+  skema aktual memakai tingkat INTEGER (1|2) tanpa action - skema menang,
+  ERD diselaraskan.

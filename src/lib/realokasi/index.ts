@@ -2,6 +2,7 @@ import type { db } from "@/db/index";
 import { chargeLines, costReallocations, jobs } from "@/db/schema/index";
 import { writeAudit } from "@/lib/audit/index";
 import { AuthorizationError, assertCan, assertNotSelfApproval } from "@/lib/authz/index";
+import { isLocked } from "@/lib/state-machine/index";
 import { and, eq, sql } from "drizzle-orm";
 
 /*
@@ -176,14 +177,19 @@ export function cekFinal(
   statusAsal: string,
   statusTujuan: string,
 ): { ok: true } | { ok: false; error: string } {
-  if (statusAsal === "FINAL") {
+  /*
+   * Irisan 5 (Q-IRIS5-8): FINAL dan DIBATALKAN sama-sama terminal - angka
+   * beku. Delegasi ke isLocked dari modul state-machine supaya SATU sumber
+   * kebenaran (nama fungsi tetap untuk kompatibilitas test 4e).
+   */
+  if (isLocked(statusAsal as Parameters<typeof isLocked>[0])) {
     return gagal(
-      "Job asal sudah FINAL — realokasi dari job FINAL tidak diizinkan (J-INV-1).",
+      `Job asal berstatus ${statusAsal} - realokasi dari job terkunci (${statusAsal}) tidak diizinkan (J-INV-1).`,
     );
   }
-  if (statusTujuan === "FINAL") {
+  if (isLocked(statusTujuan as Parameters<typeof isLocked>[0])) {
     return gagal(
-      "Job tujuan sudah FINAL — realokasi ke job FINAL tidak diizinkan (J-INV-1).",
+      `Job tujuan berstatus ${statusTujuan} - realokasi ke job terkunci (${statusTujuan}) tidak diizinkan (J-INV-1).`,
     );
   }
   return { ok: true };

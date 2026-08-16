@@ -34,7 +34,9 @@ STAFF      MANAGER          OWNER
 | `job.create` | ✓ | ✓ | ✓ |
 | `job.edit_draft` | ✓ | ✓ | ✓ sendiri |
 | `job.submit` | ✓ | ✓ | ✓ |
-| `job.approve_1` | ✓ | ✓ | ✗ |
+| `job.cancel` | ✓ | ✓ | ✓ sendiri |
+| `job.approve_first` | ✓ | ✓ | ✗ |
+| `job.reject` | ✓ | ✓ | ✗ |
 | `job.approve_final` | ✓ | ✗ | ✗ |
 | `job.request_unlock` | ✓ | ✓ | ✗ |
 | `job.unlock` | ✓ | ✗ | ✗ |
@@ -52,6 +54,12 @@ STAFF      MANAGER          OWNER
 | `audit.view` | ✓ | ✓ | ✗ |
 
 **Setiap `✗` di tabel ini wajib punya test.** Lihat `.clinerules/04-testing.md`.
+> **Irisan 5 (Q-IRIS5-4, 17 Agu 2026):** `job.cancel` (O✓M✓S✓ — STAFF
+> hanya job miliknya, dicek `maker_id` di service), `job.reject` (O✓M✓S✗ —
+> reject di DIAJUKAN oleh Manager, di DISETUJUI_1 oleh Owner), dan
+> `job:request_unlock` kini terpakai nyata. Nama izin mengikuti KODE
+> (`job:approve_first`); alias lama `job.approve_1` dipensiunkan.
+
 
 ---
 

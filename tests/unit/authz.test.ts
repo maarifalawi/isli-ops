@@ -72,3 +72,29 @@ describe("aturan persetujuan", () => {
     expect(() => assertFinalApprover("STAFF")).toThrow();
   });
 });
+
+describe("Irisan 5 - izin transisi state machine (Q-IRIS5-4)", () => {
+  it("job:cancel dimiliki ketiga peran (cancel DRAFT; scope STAFF dicek service)", () => {
+    expect(can("OWNER", "job:cancel")).toBe(true);
+    expect(can("MANAGER", "job:cancel")).toBe(true);
+    expect(can("STAFF", "job:cancel")).toBe(true);
+  });
+
+  it("job:reject hanya OWNER & MANAGER; STAFF ditolak", () => {
+    expect(can("OWNER", "job:reject")).toBe(true);
+    expect(can("MANAGER", "job:reject")).toBe(true);
+    expect(can("STAFF", "job:reject")).toBe(false);
+  });
+
+  it("job:request_unlock hanya OWNER & MANAGER (RBAC.md); STAFF ditolak", () => {
+    expect(can("OWNER", "job:request_unlock")).toBe(true);
+    expect(can("MANAGER", "job:request_unlock")).toBe(true);
+    expect(can("STAFF", "job:request_unlock")).toBe(false);
+  });
+
+  it("job:unlock tetap hanya OWNER (R-A2/R6.4)", () => {
+    expect(can("OWNER", "job:unlock")).toBe(true);
+    expect(can("MANAGER", "job:unlock")).toBe(false);
+    expect(can("STAFF", "job:unlock")).toBe(false);
+  });
+});

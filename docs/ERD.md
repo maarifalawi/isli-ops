@@ -78,6 +78,8 @@ CREATE TABLE job (
   fx_rate_usd_idr   BIGINT,            -- kurs PER JOB, bukan global
 
   status            TEXT     NOT NULL DEFAULT 'DRAFT',
+  -- Irisan 5 (Q-IRIS5-3): naik saat reject / unlock_granted; approval cycle lama gugur
+  approval_cycle    INTEGER  NOT NULL DEFAULT 1,
   period_id         UUID     REFERENCES period(id),
 
   pod_received_date DATE,              -- Proof of Delivery
