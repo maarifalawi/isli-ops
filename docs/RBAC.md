@@ -45,7 +45,10 @@ STAFF      MANAGER          OWNER
 | `invoice.void` | ✓ | ✗ | ✗ |
 | `payment.record` | ✓ | ✓ | ✓ |
 | `vendor_invoice.create` | ✓ | ✓ | ✓ |
+| `vendor_invoice.verify` | ✓ | ✓ | ✗ |
 | `vendor_invoice.approve_pay` | ✓ | ✓ | ✗ |
+| `vendor_invoice.mark_paid` | ✓ | ✓ | ✗ |
+| `vendor_invoice.unlock_paid` | ✓ | ✗ | ✗ |
 | `masterdata.edit` | ✓ | ✓ | ✗ |
 | `settings.edit` | ✓ | ✗ | ✗ |
 | `user.manage` | ✓ | ✗ | ✗ |
@@ -67,6 +70,16 @@ STAFF      MANAGER          OWNER
 > dan `payment.record` (pay_partial/pay_full) O✓M✓S✓ kini ada di
 > `authz.ACTIONS` + matriks PERMISSIONS. Mapping nama STATE-MACHINE.md §2:
 > "Finance" = OWNER+MANAGER.
+>
+> **Irisan 7 (17 Agu 2026, keputusan D2/D3):** izin invoice vendor terpakai
+> nyata di `src/lib/vendor-invoice/`. Nama mengikuti KODE (`vendor:aksi`):
+> `vendor_invoice:create` (receive) O✓M✓S✓; `vendor_invoice:verify`
+> **BARU** O✓M✓S✗ — verifikasi = aksi finansial (isi `actual_idr`), verifier
+> wajib ≠ penerima (R-A1); `vendor_invoice:mark_paid` (pay) O✓M✓S✗;
+> `vendor_invoice:unlock_paid` (batal + buka-kunci DIBAYAR) **OWNER saja**
+> (R-A5). `vendor_invoice.approve_pay` versi lama = alias konseptual
+> `mark_paid` — STATE.md 7-state (approve→APPROVED_TO_PAY) sudah dilipat ke
+> 4-state skema (lihat STATE-MACHINE.md §3).
 
 
 ---

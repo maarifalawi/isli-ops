@@ -50,6 +50,13 @@
       "when": 1786910282420,
       "tag": "0006_iris6_invoice",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786924909155,
+      "tag": "0007_iris7_vendor_invoice",
+      "breakpoints": true
     }
   ]
 }

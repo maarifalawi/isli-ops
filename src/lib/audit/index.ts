@@ -69,6 +69,17 @@ export const AKSI_AUDIT = [
   "PAY_PARTIAL",
   "VOID",
   "APPROVE_ADDENDUM",
+  /*
+   * Irisan 7 — aksi invoice vendor (STATE-MACHINE.md §3 + keputusan user
+   * D1-D9, 17 Agu 2026): RECEIVE (terima input manual), VERIFY (cocokkan ke
+   * charge line + isi actual, V-INV-5), PAY (tandai dibayar, R7.2/V-INV-3),
+   * BATAL_VENDOR (batalkan invoice vendor — beda dari VOID invoice customer;
+   * alasan wajib menuliskan kasus: ditolak/dispute/minta revisi, D1).
+   */
+  "RECEIVE",
+  "VERIFY",
+  "PAY",
+  "BATAL_VENDOR",
 ] as const;
 export type AksiAudit = (typeof AKSI_AUDIT)[number];
 
@@ -88,6 +99,8 @@ export const ENTITAS_AUDIT = [
   /* Irisan 6: invoice customer + addendum R16 + peristiwa pembayaran masuk. */
   "CUSTOMER_INVOICE",
   "CUSTOMER_INVOICE_ADDENDUM",
+  /* Irisan 7: invoice vendor (AP) — receive/verify/pay/batal. */
+  "VENDOR_INVOICE",
 ] as const;
 
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
@@ -142,7 +155,9 @@ export async function writeAudit(txOrDb: DbOrTx, input: AuditInput) {
       input.aksi === "REJECT" ||
       input.aksi === "REQUEST_UNLOCK" ||
       input.aksi === "UNLOCK_DENIED" ||
-      input.aksi === "VOID") &&
+      input.aksi === "VOID" ||
+      /* Irisan 7: batal invoice vendor = aksi uang serius (R-A5). */
+      input.aksi === "BATAL_VENDOR") &&
     !input.alasan?.trim()
   ) {
     throw new Error(`writeAudit: alasan WAJIB untuk aksi ${input.aksi}.`);

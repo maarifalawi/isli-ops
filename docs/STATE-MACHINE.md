@@ -125,24 +125,41 @@
 
 ## 3. Vendor Invoice (AP)
 
+> **Mapping nama (Irisan 7, keputusan user D1/D2 17 Agu 2026 — pola Q-IRIS5-2
+> & konflik #1/#2 Irisan 6): skema database (`vendor_invoice_status`) adalah
+> sumber kebenaran.** Dokumen lama 7-state DILIPAT ke 4-state skema:
+>
+> | Dokumen (konseptual) | Skema (`vendor_invoice_status`) |
+> |---|---|
+> | RECEIVED | DITERIMA |
+> | VERIFIED | DIVERIFIKASI |
+> | PAID | DIBAYAR |
+> | APPROVED_TO_PAY | *(tidak ada — dilipat ke DIVERIFIKASI)* |
+> | CANCELLED / REJECTED / DISPUTED / AWAITING_VENDOR | DIBATALKAN |
+>
+> Kasus ditolak/dispute/minta-revisi dibedakan lewat **kolom `alasan` di
+> audit_log** (`BATAL_VENDOR`), bukan lewat state tambahan. Jalur revisi vendor
+> (§ lama `receive_revision` "nomor invoice baru dari vendor") = **batal**
+> (junction dihapus, `actual` di-reset NULL) lalu **receive ulang** nomor baru.
+>
+> Mapping peran (D2): "AP Staff" = **STAFF** (hanya receive), "Finance
+> Manager" = **MANAGER** (verify/pay). Batal & buka-kunci DIBAYAR = **OWNER
+> saja** (R-A5).
+
 ```
-[RECEIVED] ──verify──> [VERIFIED] ──approve──> [APPROVED_TO_PAY] ──pay──> [PAID]
-     │                      │
-     │                      └──dispute──> [DISPUTED] ──resolve──> [VERIFIED]
-     │                                          │
-     └──reject──> [REJECTED]                   └──request_revision──> [AWAITING_VENDOR]
+[DITERIMA] ──verify──> [DIVERIFIKASI] ──pay──> [DIBAYAR]
+    │                        │                     │
+    │                        │                     └─unlock_paid─> [DIVERIFIKASI]
+    ├──batal──> [DIBATALKAN] <┘ (batal juga dari DITERIMA/DIVERIFIKASI)
 ```
 
 | Dari | Aksi | Ke | Siapa | Syarat |
 |---|---|---|---|---|
-| — | `receive` | RECEIVED | AP Staff | `UNIQUE(vendor_id, vendor_invoice_no)` (R7.1) |
-| RECEIVED | `verify` | VERIFIED | AP Staff | dicocokkan ke charge line job |
-| RECEIVED | `reject` | REJECTED | AP Staff | wajib alasan |
-| VERIFIED | `dispute` | DISPUTED | Finance Manager | wajib alasan |
-| DISPUTED | `request_revision` | AWAITING_VENDOR | Finance Manager | alur Bu Niken: minta revisi ke vendor |
-| AWAITING_VENDOR | `receive_revision` | RECEIVED | AP Staff | nomor invoice baru dari vendor |
-| VERIFIED | `approve` | APPROVED_TO_PAY | Finance Manager | — |
-| APPROVED_TO_PAY | `pay` | PAID | AP Staff | **wajib** cek status; sistem menolak kalau sudah PAID |
+| — | `receive` | DITERIMA | O/M/S (`vendor_invoice:create`) | `UNIQUE(vendor_id, vendor_invoice_no)` (R7.1); peringatan nomor mirip dikembalikan (V-INV-2); jejak `diterima_oleh` wajib |
+| DITERIMA | `verify` | DIVERIFIKASI | O/M (`vendor_invoice:verify`) | verifier ≠ penerima (R-A1); job DIBATALKAN ditolak (D4), job FINAL **diizinkan**; 1 charge line = 1 invoice (D5, UNIQUE junction); hanya mengisi `actual_idr` (D6) |
+| DIVERIFIKASI | `pay` | DIBAYAR | O/M (`vendor_invoice:mark_paid`) | **wajib** lihat status dulu (V-INV-3); sistem menolak kalau sudah DIBAYAR (R7.2) |
+| DITERIMA / DIVERIFIKASI | `batal` | DIBATALKAN | **OWNER saja** (`vendor_invoice:unlock_paid`, R-A5) | wajib alasan (tuliskan kasus: ditolak/dispute/revisi); sebelum bayar → junction dihapus + `actual` reset NULL; sesudah bayar batal DITOLAK |
+| DIBAYAR | `unlock_paid` | DIVERIFIKASI | **OWNER saja** (`vendor_invoice:unlock_paid`) | wajib alasan; `actual` TIDAK di-reset (V-INV-4); hanya status pembayaran yang dibuka ulang |
 
 ### Invariant
 
@@ -151,8 +168,11 @@
 | V-INV-1 | `UNIQUE(vendor_id, vendor_invoice_no)` ditegakkan di **database**, bukan hanya aplikasi. |
 | V-INV-2 | Sistem memunculkan peringatan bila ada nomor sangat mirip pada vendor yang sama (kasus `01A`/`01B`). Peringatan, bukan blokir. |
 | V-INV-3 | Aksi `pay` wajib menampilkan status pembayaran terkini sebelum konfirmasi (R7.2). |
-| V-INV-4 | Invoice vendor `PAID` mengunci charge line terkait — `actual` tidak bisa diubah lagi. |
+| V-INV-4 | Invoice vendor `DIBAYAR` mengunci charge line terkait — `actual` tidak bisa diubah lagi. |
 | V-INV-5 | Verifikasi mengisi `actual` pada charge line; selisih terhadap `pencadangan` dihitung otomatis. |
+| V-INV-6 | **Irisan 7 (D5):** satu charge line hanya boleh diverifikasi **satu** invoice vendor — `UNIQUE(charge_line_id)` di `vendor_invoice_lines` (DB). Partial/multiple = irisan terpisah. |
+| V-INV-7 | **Irisan 7 (D7):** setelah terverifikasi invoice aktif (DIVERIFIKASI/DIBAYAR), `updateChargeLine` **mempertahankan** `actual_idr/actual_usd` (beku; verifikasi = satu-satunya pintu). Hapus baris terverifikasi ditolak. |
+| V-INV-8 | **Irisan 7 (D9):** vendor invoice **tidak** memblokir unlock job — J-INV-3/4 hanya bicara invoice customer. V-INV-4 mengunci *charge line*, bukan syarat unlock. |
 
 ---
 
