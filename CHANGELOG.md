@@ -50,7 +50,35 @@
 - Test: `tests/e2e/job-actions.spec.ts` (2 skenario: STAFF non-maker tanpa
   tombol aksi + badge PENCADANGAN; alur OWNER/MANAGER tetap dikunci 28 test
   integrasi Irisan 5). Selector smoke/master-crud tidak berubah.
-- Verifikasi: typecheck + lint + vitest 518/518 + golden 46/46 + e2e 16/16. Tidak ada jawaban baru yang ditebak.
+- Verifikasi: typecheck + lint + vitest 518/518 + golden 46/46 + e2e 16/16.
+
+### Irisan 10 - Batch B / Item 5: UI Invoice Vendor (V-INV-2 + V-INV-3) - 17 Agu 2026
+
+- `src/lib/actions/vendor-invoice.ts` (baru): 5 action mutasi wrapper tipis
+  atas service Irisan 7 (tanpa logika state machine/authz/audit yang ditulis
+  ulang) + 2 action READ untuk hard requirement: `actionCekNomorMirip`
+  (V-INV-2) dan `actionLihatStatusPembayaran` (V-INV-3).
+- `src/app/invoice-vendor/` (baru): halaman /invoice-vendor - pilih vendor,
+  form terima, tabel + aksi per baris. Nav "Invoice Vendor" ditambahkan.
+- V-INV-2 (KERAS): peringatan nomor mirip (Levenshtein <= 2) tampil REAL-TIME
+  debounced 400ms SEBELUM submit. Gagal cek tidak ditelan diam-diam: retry
+  otomatis 1x (harusRetryOtomatis) lalu status "Gagal memeriksa" + tombol
+  coba ulang - "tanpa peringatan" tidak pernah berarti "aman". Setelah
+  submit sukses: router.replace dengan query vendor (bukan router.refresh -
+  menghilangkan race RSC vs server action debounce).
+- V-INV-3 (KERAS): tombol "Lihat status" memuat snapshot pembayaran DULU;
+  tombol "Bayar" hanya dirender setelahnya via bolehTampilTombolBayar(role,
+  statusSudahDimuat) - dikunci 5 unit test yang merah jika gating dilonggarkan.
+- Test: 7 unit test gating/retry baru; e2e vendor-invoice.spec.ts - V-INV-2
+  desktop + V-INV-3 desktop+mobile hijau. V-INV-2 mobile e2e sementara
+  test.fixme - test infrastructure issue (server action menggantung hanya
+  saat mobile-setelah-desktop dalam satu run Playwright; mobile standalone
+  hijau; bukan paralelisme/race-refresh/silent-catch - matriks 4 percobaan
+  tercatat lengkap di komentar spec). BUKAN bug kode. Coverage tetap via
+  desktop e2e + 7 unit test + arsitektur server-side. Buka kembali saat
+  Playwright/Next.js update atau sesi debug dengan server log.
+- Verifikasi: typecheck + lint + vitest 525/525 + golden 46/46 + e2e
+  19 passed 1 fixme 0 failed. Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).

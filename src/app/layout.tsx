@@ -42,6 +42,12 @@ export default function RootLayout({
               >
                 Laporan
               </a>
+              <a
+                href="/invoice-vendor"
+                className="flex min-h-[44px] items-center text-label text-ink-48 hover:text-ink"
+              >
+                Invoice Vendor
+              </a>
             </nav>
             <span className="text-label text-ink-48">Irisan 8 · Laporan</span>
           </div>
