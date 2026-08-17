@@ -15,7 +15,9 @@ import { daftarChargeLine } from "@/lib/charge-line/index";
 import { daftarJob } from "@/lib/job/index";
 import { daftarChargeCode, daftarVendor } from "@/lib/master-data/index";
 import { requireUser } from "@/lib/session/index";
+import { statusChargeLine } from "@/lib/vendor-invoice/index";
 import { notFound } from "next/navigation";
+import { AksiJob } from "../aksi-job";
 import { EditorChargeLine } from "./charge-lines";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +27,7 @@ export default async function HalamanDetailJob({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireUser();
+  const user = await requireUser();
   const { id } = await params;
 
   const [jobs, lines, chargeCodes, vendors] = await Promise.all([
@@ -51,19 +53,22 @@ export default async function HalamanDetailJob({
     .filter((v) => v.aktif)
     .map((v) => ({ id: v.id, nama: v.nama }));
 
-  const barisUi = lines.map((l) => ({
-    id: l.id,
-    chargeCode: l.chargeCode,
-    vendorId: l.vendorId,
-    keterangan: l.keterangan,
-    sellingIdr: l.sellingIdr?.toString() ?? "0",
-    pencadanganIdr: l.pencadanganIdr?.toString() ?? "0",
-    isReimburse: l.isReimburse,
-    isAtCost: l.isAtCost,
-    leg: l.leg,
-    currency: l.currency,
-    urutan: l.urutan,
-  }));
+  const barisUi = await Promise.all(
+    lines.map(async (l) => ({
+      id: l.id,
+      chargeCode: l.chargeCode,
+      vendorId: l.vendorId,
+      keterangan: l.keterangan,
+      sellingIdr: l.sellingIdr?.toString() ?? "0",
+      pencadanganIdr: l.pencadanganIdr?.toString() ?? "0",
+      isReimburse: l.isReimburse,
+      isAtCost: l.isAtCost,
+      leg: l.leg,
+      currency: l.currency,
+      urutan: l.urutan,
+      statusPembayaran: await statusChargeLine(db, l.id),
+    })),
+  );
 
   return (
     <div>
@@ -72,12 +77,21 @@ export default async function HalamanDetailJob({
         keterangan="Charge line: baris biaya (selling & buying), leg, at-cost, dan vendor. Konversi kurs & GP menyusul di irisan berikutnya."
       />
 
-      <EditorChargeLine
-        jobId={job.id}
-        baris={barisUi}
-        chargeCodes={kodeAktif}
-        vendors={vendorAktif}
-      />
+      <div className="space-y-6">
+        <AksiJob
+          jobId={job.id}
+          status={job.status}
+          role={user.role}
+          userId={user.id}
+          makerId={job.makerId}
+        />
+        <EditorChargeLine
+          jobId={job.id}
+          baris={barisUi}
+          chargeCodes={kodeAktif}
+          vendors={vendorAktif}
+        />
+      </div>
     </div>
   );
 }

@@ -31,7 +31,26 @@
 - `docs/OPEN-QUESTIONS.md`: tutup formal 9 entri yang jawabannya sudah
   tertulis dari sesi klien/Irisan 5-8 tapi baris lamanya masih kosong:
   Q20, Q23, Q24, Q37, Q39, Q56, Q58, Q70, Q71 (masing-masing dengan dasar
-  jawaban yang dikutip). Tidak ada jawaban baru yang ditebak.
+  jawaban yang dikutip).
+
+### Irisan 10 - Batch B / Item 4: UI aksi state-machine job - 17 Agu 2026
+
+- `src/lib/actions/job-transisi.ts` (baru): 8 server action wrapper TIPIS
+  atas service Irisan 5 - tanpa logika izin/guard/audit yang ditulis ulang;
+  revalidatePath /jobs + /jobs/[id].
+- `src/app/jobs/aksi-job.tsx` (baru): komponen AksiJob - tombol per status
+  (Ajukan/Batalkan/Setujui L1/Kembalikan/Setujui Final/Minta Buka Kunci/
+  Buka Kunci/Tolak Pembukaan), alasan wajib utk reject/unlock, URL berita
+  acara wajib utk request_unlock (R6.4). Matriks tampil via can() saja
+  (dependency-cruiser bersih); service tetap penjaga otoritatif.
+- `/jobs`: kolom Aksi per baris (mode compact). `/jobs/[id]`: panel
+  "Aksi persetujuan" penuh.
+- Badge status baris PENCADANGAN/ACTUAL/LOCKED via statusChargeLine
+  (Irisan 7) di editor charge line - kolom Status baru.
+- Test: `tests/e2e/job-actions.spec.ts` (2 skenario: STAFF non-maker tanpa
+  tombol aksi + badge PENCADANGAN; alur OWNER/MANAGER tetap dikunci 28 test
+  integrasi Irisan 5). Selector smoke/master-crud tidak berubah.
+- Verifikasi: typecheck + lint + vitest 518/518 + golden 46/46 + e2e 16/16. Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).

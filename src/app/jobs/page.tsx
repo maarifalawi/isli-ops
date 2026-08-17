@@ -16,6 +16,7 @@ import { daftarJob } from "@/lib/job/index";
 import { daftarCustomer } from "@/lib/master-data/index";
 import { requireUser } from "@/lib/session/index";
 import Link from "next/link";
+import { AksiJob } from "./aksi-job";
 import { FormBuatJob } from "./form";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +30,7 @@ function legText(t: boolean, f: boolean, d: boolean): string {
 }
 
 export default async function HalamanJobs() {
-  await requireUser();
+  const user = await requireUser();
   const [jobs, customers] = await Promise.all([daftarJob(db), daftarCustomer(db)]);
   const customerNama = new Map(customers.map((c) => [c.id, c.nama]));
   const customerAktif = customers
@@ -67,12 +68,15 @@ export default async function HalamanJobs() {
               <th className="px-3 py-2 text-left text-micro uppercase text-ink-48">
                 Status
               </th>
+              <th className="px-3 py-2 text-right text-micro uppercase text-ink-48">
+                Aksi
+              </th>
             </tr>
           </thead>
           <tbody>
             {jobs.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-3 py-6 text-body text-ink-48">
+                <td colSpan={6} className="px-3 py-6 text-body text-ink-48">
                   Belum ada job.
                 </td>
               </tr>
@@ -96,6 +100,16 @@ export default async function HalamanJobs() {
                     ) : null}
                   </td>
                   <td className="px-3 py-2 text-body">{j.status}</td>
+                  <td className="px-3 py-2">
+                    <AksiJob
+                      jobId={j.id}
+                      status={j.status}
+                      role={user.role}
+                      userId={user.id}
+                      makerId={j.makerId}
+                      compact
+                    />
+                  </td>
                 </tr>
               ))
             )}
