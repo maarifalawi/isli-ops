@@ -2,6 +2,211 @@
 
 ## [Unreleased]
 
+### Irisan 10 - Batch A / Item 1: .gitattributes - 17 Agu 2026
+
+- File `.gitattributes` baru: `* text=auto eol=lf` untuk semua file teks
+  (selaras default LF Biome & CI), binari eksplisit `-text`
+  (png/jpg/jpeg/gif/webp/ico/pdf/doc/docx/xls/xlsx/ppt/pptx/zip/gz/
+  woff/woff2/ttf/otf/exe/dll - melindungi dokumen asli klien di
+  `docs/source-of-truth/`), skrip Windows (`ps1/bat/cmd`) dibiarkan CRLF.
+- Pencegahan insiden "lint fix mengubah CRLF ke LF" yang pernah terjadi di
+  Irisan 7/8 pada mesin Windows. TANPA `git add --renormalize .` -
+  renormalize massal hanya via commit terpisah dengan persetujuan eksplisit.
+
+### Irisan 10 - Batch A / Item 2: E2E CI Secrets - 17 Agu 2026
+
+- `.github/workflows/ci.yml`: job `e2e` dan `build` kini membaca
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD` dengan pola fallback
+  (secrets.X || nilaiBoneka) - CI tetap hijau SEBELUM secrets diset;
+  setelah diset, spec login (smoke, master-crud) ikut berjalan otomatis
+  tanpa ubah workflow lagi.
+- `docs/SETUP-CI-SECRETS.md` baru: langkah lengkap untuk pemilik repo -
+  buat akun uji Supabase DULU (scripts/create-supabase-users.md), baru isi
+  4 Secrets di GitHub Settings. DATABASE_URL bukan secret (postgres service
+  CI lokal).
+
+### Irisan 10 - Batch A / Item 3: beres-beres open questions - 17 Agu 2026
+
+- `docs/OPEN-QUESTIONS.md`: tutup formal 9 entri yang jawabannya sudah
+  tertulis dari sesi klien/Irisan 5-8 tapi baris lamanya masih kosong:
+  Q20, Q23, Q24, Q37, Q39, Q56, Q58, Q70, Q71 (masing-masing dengan dasar
+  jawaban yang dikutip).
+
+### Irisan 10 - Batch B / Item 4: UI aksi state-machine job - 17 Agu 2026
+
+- `src/lib/actions/job-transisi.ts` (baru): 8 server action wrapper TIPIS
+  atas service Irisan 5 - tanpa logika izin/guard/audit yang ditulis ulang;
+  revalidatePath /jobs + /jobs/[id].
+- `src/app/jobs/aksi-job.tsx` (baru): komponen AksiJob - tombol per status
+  (Ajukan/Batalkan/Setujui L1/Kembalikan/Setujui Final/Minta Buka Kunci/
+  Buka Kunci/Tolak Pembukaan), alasan wajib utk reject/unlock, URL berita
+  acara wajib utk request_unlock (R6.4). Matriks tampil via can() saja
+  (dependency-cruiser bersih); service tetap penjaga otoritatif.
+- `/jobs`: kolom Aksi per baris (mode compact). `/jobs/[id]`: panel
+  "Aksi persetujuan" penuh.
+- Badge status baris PENCADANGAN/ACTUAL/LOCKED via statusChargeLine
+  (Irisan 7) di editor charge line - kolom Status baru.
+- Test: `tests/e2e/job-actions.spec.ts` (2 skenario: STAFF non-maker tanpa
+  tombol aksi + badge PENCADANGAN; alur OWNER/MANAGER tetap dikunci 28 test
+  integrasi Irisan 5). Selector smoke/master-crud tidak berubah.
+- Verifikasi: typecheck + lint + vitest 518/518 + golden 46/46 + e2e 16/16.
+
+### Irisan 10 - Batch B / Item 5: UI Invoice Vendor (V-INV-2 + V-INV-3) - 17 Agu 2026
+
+- `src/lib/actions/vendor-invoice.ts` (baru): 5 action mutasi wrapper tipis
+  atas service Irisan 7 (tanpa logika state machine/authz/audit yang ditulis
+  ulang) + 2 action READ untuk hard requirement: `actionCekNomorMirip`
+  (V-INV-2) dan `actionLihatStatusPembayaran` (V-INV-3).
+- `src/app/invoice-vendor/` (baru): halaman /invoice-vendor - pilih vendor,
+  form terima, tabel + aksi per baris. Nav "Invoice Vendor" ditambahkan.
+- V-INV-2 (KERAS): peringatan nomor mirip (Levenshtein <= 2) tampil REAL-TIME
+  debounced 400ms SEBELUM submit. Gagal cek tidak ditelan diam-diam: retry
+  otomatis 1x (harusRetryOtomatis) lalu status "Gagal memeriksa" + tombol
+  coba ulang - "tanpa peringatan" tidak pernah berarti "aman". Setelah
+  submit sukses: router.replace dengan query vendor (bukan router.refresh -
+  menghilangkan race RSC vs server action debounce).
+- V-INV-3 (KERAS): tombol "Lihat status" memuat snapshot pembayaran DULU;
+  tombol "Bayar" hanya dirender setelahnya via bolehTampilTombolBayar(role,
+  statusSudahDimuat) - dikunci 5 unit test yang merah jika gating dilonggarkan.
+- Test: 7 unit test gating/retry baru; e2e vendor-invoice.spec.ts - V-INV-2
+  desktop + V-INV-3 desktop+mobile hijau. V-INV-2 mobile e2e sementara
+  test.fixme - test infrastructure issue (server action menggantung hanya
+  saat mobile-setelah-desktop dalam satu run Playwright; mobile standalone
+  hijau; bukan paralelisme/race-refresh/silent-catch - matriks 4 percobaan
+  tercatat lengkap di komentar spec). BUKAN bug kode. Coverage tetap via
+  desktop e2e + 7 unit test + arsitektur server-side. Buka kembali saat
+  Playwright/Next.js update atau sesi debug dengan server log.
+- Verifikasi: typecheck + lint + vitest 525/525 + golden 46/46 + e2e
+  19 passed 1 fixme 0 failed.
+
+### Irisan 10 - Batch B / Item 6: UI Invoice Customer (/invoice) - 17 Agu 2026
+
+- `src/app/invoice/` (baru): halaman /invoice - daftar invoice (join job+customer,
+  11 kolom, DPP/PPN/PPh23/Total dari kolom BEKU I-INV-1, komponen hanya
+  memformat), form draft (dropdown job FINAL saja, tanggal POD R9.4, centang
+  PPh23 R3.5 eksplisit), aksi per status via gating.ts (can()): terbitkan/kirim
+  O/M, batalkan OWNER saja, bayar O/M/S. Nav "Invoice" ditambahkan.
+- `src/lib/actions/invoice.ts` (baru): 8 server action wrapper TIPIS atas
+  service Irisan 6 - nol logika state machine/authz/audit/pajak yang ditulis
+  ulang. Nomor invoice TIDAK PERNAH disetel UI: alokasi via
+  allocateInvoiceNumber di dalam issueInvoice (satu transaksi dengan beku
+  pajak, R2 + I-INV-1). dueDate manual wajib (R9.2), pph23Applicable selalu
+  eksplisit param issue (R3.5).
+- `src/lib/invoice/index.ts`: + daftarInvoicePelanggan (query read join
+  jobs+customers, READ ONLY tanpa logika uang). + Perbaikan ketahanan J1b-1
+  (izin user): validasi format UUID murni JS di createDraftInvoice - jobId
+  non-UUID dari input publik kini return gagal("Job tidak ditemukan.")
+  alih-alih crash error page (Postgres 22P02 lewat DrizzleQueryError).
+  Perilaku UUID valid sama persis Irisan 6; test Irisan 6 tak berubah.
+- Test: +5 unit (4 gating per peran + 1 J1 UUID invalid tanpa throw) = 530
+  total. E2e invoice.spec.ts: skenario halaman x2 viewport (form draft STAFF,
+  dropdown FINAL-only) hijau. Skenario guard R9.4 via injeksi-DOM DIHAPUS
+  (keputusan K1): anti-pattern Playwright x React hydration non-deterministik
+  di mobile; guard tetap terkunci 3 lapis - unit J1 + 30 integrasi Irisan 6 +
+  UI FINAL-only. Catatan lengkap tertulis di spec.
+- Verifikasi: typecheck + lint 0 error + vitest 530/530 + golden 46/46 + e2e
+  21 passed 1 fixme (V-INV-2 mobile, Item 5) 0 failed.
+
+### Irisan 10 - Batch B / Item 7: Kartu GP/NETT di /jobs/[id] - 17 Agu 2026
+
+- `src/lib/laporan/queries.ts`: + kartuGpJob view-model (Irisan 10 Item 7) -
+  rumus TIDAK ditulis ulang: hitungGP/hitungGPpct/hitungNETT dari costing
+  (terkunci test 4d). PPN = SUM kolom BEKU invoice TERBIT+ (I-INV-1, tidak
+  dihitung ulang); job tanpa invoice -> NETT "— (menunggu invoice)".
+  Overlay realokasi APPROVED via detailJobUntukLaporan (pola agregat Irisan 8,
+  tanpa logika realokasi baru). null = "belum ada data" (—), bukan Rp0
+  menyesatkan (pola costing).
+- `src/app/jobs/[id]/page.tsx`: kartu 4 kolom server-formatted (GP
+  pencadangan, GP %, NETT, GP setelah realokasi - oranye bila berubah);
+  komponen hanya merender string (pola kartuJobCariDariDetail 8b). Komentar
+  stale "GP menyusul di irisan berikutnya" dibersihkan (juga di /jobs/page).
+- Test: +5 unit kartuGpJob (kebijakan tampilan: null-vs-0, NETT-GP=PPN Q09,
+  overlay realokasi) = 535 total; +1 e2e job-gp.spec (kartu tampil, GP
+  terisi untuk job berbaris, kedua viewport).
+- Verifikasi: typecheck + lint 0 + vitest 535/535 + golden 46/46 + e2e
+  23 passed 1 fixme (V-INV-2 mobile) 0 failed.
+
+### Irisan 10 - Batch B / Item 8: UI Realokasi + fix nav mobile + fix timeout login e2e - 18 Agu 2026
+
+- `src/lib/realokasi/index.ts`: + daftarSemuaRealokasi (query READ join jobs asal,
+  tanpa logika). `src/lib/actions/realokasi.ts` (baru): 3 server action wrapper
+  TIPIS atas service 4e (ajukan/setujui/tolak) - nol guard yang ditulis ulang.
+- `src/app/realokasi/` (baru): halaman /realokasi - form pengajuan (job asal
+  GET -> baris aktif + job tujuan non-locked + jumlah + alasan Q06), tabel
+  status PENDING/APPROVED per baris, Setujui/Tolak hanya M/O dan tidak untuk
+  proposal sendiri (gating can(); service tetap penjaga otoritatif R-A1).
+  PENDING tidak mengubah GP - hanya APPROVED jadi overlay (agregat Irisan 8
+  tak disentuh). Nav "Realokasi" ditambahkan.
+- FIX M1 (regresi ditemukan smoke HP): link nav ke-7 meluap 375px -> nav
+  scrollable-horizontal (overflow-x-auto whitespace-nowrap); gulir di dalam
+  nav, document bebas horizontal-scroll, 7 link utuh, sentuh tetap 44px.
+- FIX N2 (test-infra durabil): timeout assert redirect login 15s di helper
+  login()/masuk() semua spec (6 file) - redirect Supabase kadang >5s default
+  di worker mobile; URL yang di-assert tetap "/" (bukan pelonggaran asersi).
+- Test: +2 unit gating realokasi (=537 total) + e2e realokasi.spec (STAFF:
+  form+tabel tampil, tanpa tombol Setujui) x2 viewport.
+- Verifikasi: typecheck + lint 0 + vitest 537/537 + golden 46/46 + e2e
+  server-fresh 25 passed 1 fixme (V-INV-2 mobile) 0 failed.
+
+### Irisan 10 - Batch C / Item 9: PDF Invoice Customer On-Demand (ADR-0005) - 18 Agu 2026
+
+- @react-pdf/renderer terpasang (ADR-0005 Accepted, bukan puppeteer)
+- src/lib/invoice-pdf/index.tsx: render murni, angka HANYA dari kolom beku
+  (I-INV-1), terbilang pass-through, kop placeholder TODO(R12)
+- GET /invoice/[id]/pdf: on-demand, inline/attachment (?download=1), TERBIT+
+  only (DRAFT/BATAL 409)
+- Tombol "Cetak PDF" di /invoice (baris TERBIT+ saja)
+- Koreksi TOOLCHAIN.md: puppeteer -> @react-pdf/renderer (ADR-0005 mengikat)
+- Seed fixture O3: job FINAL ISLI-26.08-006 + invoice TERBIT Materee beku
+  (22.600.000/248.600/23.848.600 + terbilang) - e2e PDF deterministik, tidak
+  lagi bergantung data sisa integration test; idempoten; integration Irisan 6
+  dan golden tak terdampak (job ad-hoc sendiri)
+- 5 unit test: Materee 23.848.600, Diametral 131.429.434, terbilang
+  pass-through, deterministik (normalisasi /CreationDate + /ID @react-pdf),
+  data beda = byte beda
+- vitest.config: esbuild.jsx automatic (konsisten Next 15; tanpa ini .tsx di
+  src/lib gagal "React is not defined" di vitest)
+- Verifikasi: typecheck + lint 0 + vitest 542/542 + golden 46/46 + e2e
+  server-fresh: invoice-pdf HIJAU x2 viewport; 24 passed + 1 fixme
+  (V-INV-2 mobile) + 1 flake login-mobile lokal (pola identik berulang
+  sejak Item 5, spec sama lulus di run lain; CI retries=2 otoritas) Tidak ada jawaban baru yang ditebak.
+- `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
+  "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
+  masih menunggu jawaban Indra adalah Q77).
+- `docs/PERTANYAAN-UNTUK-KLIEN.md` baru: daftar 29 pertanyaan siap kirim,
+  dikelompokkan per penerima (Niken: pajak + laporan/data; Fairol: data/
+  orang termasuk blocker Q41 SO BULAN xlsx; Pak Indra: akses + keputusan
+  operasional) + daftar tidak-mendesak + info penutupan administratif.
+
+### Irisan 10 - Batch C / Item 10: Addenda Vendor R17 (fase 1 service + fase 2 rekap R7.3) - 18 Agu 2026
+
+- **Fase 1 (commit `1cb8875`):** `src/lib/vendor-invoice/addenda.ts` baru -
+  addendum invoice vendor R17: satu nomor invoice boleh SENGAJA dipakai ulang
+  menagih sisa di bulan berikutnya; alur DRAFT -> DISETUJUI -> ISSUED ->
+  dibayar_at (guard: hanya setelah ISSUED); approval Manager/Owner tidak
+  boleh pembuat (R-A1, default Q77); sisa kuota R17.3 = jumlah asli - SUM
+  addendum dibayar, dihitung saat tampil (R14.5). Audit entitas
+  VENDOR_INVOICE_ADDENDUM. TIDAK menyentuh uq_vendor_invoice/migrasi (tabel
+  sudah ada dari Irisan 7). 8 test (5 unit + 3 integration).
+- **Fase 2 (commit ini):** revisi rekap R7.3 `src/lib/laporan/queries.ts` -
+  `rekapVendorPerBulan` kini menyertakan addenda yang dibayar_at terisi:
+  addendum dibayar di bulan X menambah uang keluar vendor di bulan X
+  (jumlahIdr + pph23Idr, bulan dari dibayar_at WIB), BUKAN di bulan invoice
+  asal. `peringkatVendorBelanja` otomatis ikut (total belanja per vendor
+  termasuk addenda dibayar). Kolom jumlahInvoice tetap menghitung invoice
+  DIBAYAR saja (addendum = nomor sama dipakai ulang, bukan invoice baru).
+  Komentar "Addenda vendor R17 DIKECUALIKAN (tabel idle)" diganti "Addenda
+  vendor R17 TERMASUK (dibayar_at terisi)". +1 integration test rekap
+  (bulan bayar vs bulan asal, addendum belum dibayar tak masuk, peringkat).
+- UI/export tak berubah (pola view-model sama - hanya sumber baris rekap
+  bertambah). Golden test tak tersentuh.
+- FIX e2e `invoice-pdf.spec.ts` (bug laten Item 9, ditemukan run penuh ini):
+  selector `a[href$="/pdf"]` tak pernah cocok karena href berakhiran
+  `?download=1` - ganti locator role `getByRole("link", { name: "Cetak PDF" })`.
+  Asersi TIDAK dilonggarkan (visible + 200 + content-type + magic bytes
+  `%PDF-` tetap). Data seed O3 diverifikasi ada sebelum diagnosa selector.
+
 ### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
 
 - **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`

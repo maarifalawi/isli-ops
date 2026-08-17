@@ -1,0 +1,46 @@
+# .gitattributes — normalisasi line-ending lintas platform (Irisan 10, Item 1)
+#
+# Latar: repo dikerjakan di Windows (editor + PowerShell) tapi CI dan Biome
+# mengharapkan LF. Biome (biome.json) tidak men-set formatter.lineEnding,
+# default-nya LF — "lint fix" pernah mengubah CRLF ke LF diam-diam di beberapa
+# file (sesi Irisan 7/8), menciptakan diff yang tidak berkaitan dengan
+# perubahan asli. File ini membuat git selalu menegakkan LF di sisi repo
+# sehingga masalah itu tidak terulang, apa pun setelan core.autocrlf milik
+# kontributor.
+#
+# JANGAN menjalankan `git add --renormalize .` di commit yang sama dengan
+# penambahan file ini — renormalize massal bisa menghasilkan diff raksasa
+# dan konflik pada PR yang sedang terbuka. Renormalize (bila suatu saat
+# diinginkan) harus commit terpisah dengan persetujuan eksplisit.
+
+# Default: semua file teks dinormalisasi ke LF di repo (checkout tetap LF).
+* text=auto eol=lf
+
+# Binari — JANGAN pernah dinormalisasi (rusak permanen kalau ditrakteksi teks).
+# docs/source-of-truth/ adalah dokumen ASLI klien (read-only) — wajib terlindungi.
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.gif -text
+*.webp -text
+*.ico -text
+*.pdf -text
+*.doc -text
+*.docx -text
+*.xls -text
+*.xlsx -text
+*.ppt -text
+*.pptx -text
+*.zip -text
+*.gz -text
+*.woff -text
+*.woff2 -text
+*.ttf -text
+*.otf -text
+*.exe -text
+*.dll -text
+
+# Skrip Windows (PowerShell/batch): konvensi CRLF — biarkan apa adanya.
+*.ps1 -text
+*.bat -text
+*.cmd -text

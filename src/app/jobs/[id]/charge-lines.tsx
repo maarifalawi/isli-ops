@@ -51,7 +51,19 @@ type BarisUi = {
   leg: number | null;
   currency: string;
   urutan: number;
+  statusPembayaran: "PENCADANGAN" | "ACTUAL" | "LOCKED";
 };
+
+function BadgePembayaran({ status }: { status: BarisUi["statusPembayaran"] }) {
+  const warna =
+    status === "LOCKED" ? "text-red" : status === "ACTUAL" ? "text-green" : "text-ink-48";
+  return (
+    <span className={`inline-flex items-center gap-1 text-micro ${warna}`}>
+      <span className="inline-block h-2 w-2 rounded-full bg-current" />
+      {status}
+    </span>
+  );
+}
 
 function formatRp(nilai: string): string {
   try {
@@ -154,6 +166,9 @@ function TabelChargeLine({
             <th className="px-3 py-2 text-left text-micro uppercase text-ink-48">
               Sifat
             </th>
+            <th className="px-3 py-2 text-left text-micro uppercase text-ink-48">
+              Status
+            </th>
             <th className="px-3 py-2 text-right text-micro uppercase text-ink-48">
               Aksi
             </th>
@@ -162,7 +177,7 @@ function TabelChargeLine({
         <tbody>
           {baris.length === 0 ? (
             <tr>
-              <td colSpan={7} className="px-3 py-6 text-body text-ink-48">
+              <td colSpan={8} className="px-3 py-6 text-body text-ink-48">
                 Belum ada baris biaya.
               </td>
             </tr>
@@ -185,6 +200,9 @@ function TabelChargeLine({
                   {b.currency !== "IDR" ? (
                     <span className="ml-1 text-micro text-ink-48">{b.currency}</span>
                   ) : null}
+                </td>
+                <td className="px-3 py-2">
+                  <BadgePembayaran status={b.statusPembayaran} />
                 </td>
                 <td className="px-3 py-2 text-right text-body">
                   <button

@@ -36,7 +36,7 @@ baris di bawah punya alasan yang terikat ke masalah nyata ISLI, bukan karena pop
 
 | Paket | Kenapa |
 |---|---|
-| `puppeteer` / `playwright-chromium` (server-side) | ADR-0005. Invoice PDF harus **identik** dengan `KOP Surat ISLI VALID.docx`. Render HTML -> PDF di server, bukan `@react-pdf/renderer` (tata letak kop terlalu rumit). |
+| `@react-pdf/renderer` | ADR-0005 (Accepted). Render PDF invoice customer on-demand di server, langsung dari kolom beku (I-INV-1). Koreksi Irisan 10 Item 9: ADR-0005 mengikat atas baris lama yang menyarankan puppeteer — lihat docs/adr/0005. |
 | `exceljs` atau `xlsx` | Impor `SO BULAN *.xlsx` (Q41) dan ekspor rekap untuk Bu Niken. Tanpa ini migrasi data historis manual. |
 | `date-fns` + `date-fns-tz` | TOP 14/30 hari, ETD, jatuh tempo. Semua WIB. Jangan pakai `Date` mentah. |
 | `web-push` | Notifikasi PWA. Menggantikan WhatsApp API — hemat ±Rp 500rb/bln (riset sudah dilakukan). |

@@ -38,11 +38,11 @@
 | Q17 | Daftar lengkap role & siapa saja orangnya? (sales, ops, finance/AP, manajer, owner) | INDRA | RBAC | |
 | Q18 | Siapa yang berhak menyetujui unlock dokumen final selain Pak Indra? | INDRA | R6.4 | |
 | Q19 | Job non-shipment (penagihan storage murni, GP 0) itu kategori resmi? | NIKEN | R11 | |
-| Q20 | NPWP, alamat lengkap, telepon, email, website ISLI untuk kop invoice? | NIKEN | R12 | |
+| Q20 | NPWP, alamat lengkap, telepon, email, website ISLI untuk kop invoice? | NIKEN | R12 | TERTUTUP 13 Agu 2026 (jawaban klien, dicatat di sesi 13 Agu): identitas diinput sendiri oleh user lewat field pengaturan; nilai asli NPWP/alamat/telp masih menunggu data klien (lihat R12). |
 | Q21 | Perlu upload lampiran (scan POD, invoice vendor, BL) ke sistem? | INDRA | — | |
 | Q22 | Data historis Apr–Jul 2026 wajib dimigrasi, atau mulai bersih? | INDRA | — | |
-| Q23 | Daftar customer + NPWP + TOP default + apakah pemotong PPh 23? | NIKEN | fixtures | |
-| Q24 | Daftar vendor + NPWP + termin bayar (cash/tempo berapa hari)? | NIKEN | fixtures | |
+| Q23 | Daftar customer + NPWP + TOP default + apakah pemotong PPh 23? | NIKEN | fixtures | TERTUTUP 13 Agu 2026: diinput user sendiri; CRUD Irisan 3 (pemotongan PPh 23 tetap manual per invoice, R3.5). |
+| Q24 | Daftar vendor + NPWP + termin bayar (cash/tempo berapa hari)? | NIKEN | fixtures | TERTUTUP 13 Agu 2026: diinput user sendiri; CRUD Irisan 3. |
 | Q25 | Normalisasi nama: `MATEREE` / `MATEREE NUSANTARA` / `PT. MATEREE NUSANTARA UTAMA` sama? `METTA LINTAS` vs `META LINTAS`? | FAIROL | §1.10 | |
 | Q26 | ~~Kombinasi leg domestik "mostly" 1+2+3~~ | — | R10 | ✅ **TERTUTUP 13 Agu 2026.** Default `1+2+3`, boleh diubah dengan alasan tercatat. Pengecualian akan terbaca sendiri dari `leg_override_alasan` setelah 3 bulan. |
 | Q27 | Approval Pak Indra dilakukan dari mana? Perlu akses HP? | INDRA | NFR | |
@@ -82,9 +82,9 @@ Lihat `docs/SOURCE-PROVENANCE.md`.
 |---|---|---|---|---|
 | Q35 | **Siapa "Mundofir 01"?** Orang ini yang terakhir mengedit kedua invoice (Materee 349 menit, Diametral 1 menit) tapi tidak pernah disebut di meeting. Apa perannya? Dia calon pengguna sistem? | FAIROL, INDRA | RBAC, Q17 | |
 | Q36 | **"VFL INDONESIA" itu apa?** | NIKEN | Q01 | 🟡 **Hampir tertutup.** Konsisten dengan jawaban Q01: template warisan dari tempat kerja lama Pak Indra. Sisa yang perlu dipastikan: tidak ada baris data VFL yang terbawa ke rekap ISLI. |
-| Q37 | 🔴 **Apakah ada baris/kolom yang dihapus dari summary report sebelum dikirim?** File disimpan ulang Bu Niken 12 Agu 09:10, tepat sebelum serah-terima. Menentukan apakah TEMUAN 1 & 2 valid. | NIKEN | RECONCILIATION | |
+| Q37 | 🔴 **Apakah ada baris/kolom yang dihapus dari summary report sebelum dikirim?** File disimpan ulang Bu Niken 12 Agu 09:10, tepat sebelum serah-terima. Menentukan apakah TEMUAN 1 & 2 valid. | NIKEN | RECONCILIATION | DIJAWAB 13 Agu 2026 - tidak ada baris/kolom yang dihapus (lihat bagian khusus Q37 di bawah). |
 | Q38 | "Cecilia Niken" dan "Niken Integra" — orang yang sama dengan dua akun, atau dua orang berbeda? | FAIROL | — | |
-| Q39 | Apakah 75 job yang kami terima itu seluruh job Apr–Jul 2026, atau hanya sebagian yang dipilih sebagai contoh? | FAIROL | fixtures | |
+| Q39 | Apakah 75 job yang kami terima itu seluruh job Apr–Jul 2026, atau hanya sebagian yang dipilih sebagai contoh? | FAIROL | fixtures | TERTUTUP 13 Agu 2026: tidak tentu / tidak dihitung klien; sistem dirancang utk 100 job/bln. |
 | Q40 | Invoice Materee butuh 349 menit waktu edit. Apakah menyiapkan satu invoice memang selama itu? Kalau ya, bagian mana yang paling makan waktu? | FAIROL, NIKEN | PRD | |
 
 > Q40 bukan pertanyaan iseng. Kalau satu invoice memang butuh berjam-jam,
@@ -213,6 +213,8 @@ apa yang dikirim (Sales Invoice / Purchase Invoice / Journal).
 
 OWNER merangkap, atau approval 1 dilewati?
 
+**JAWABAN (17 Agu 2026, Irisan 5): OWNER** - konsekuensi R-A1 (approver tidak boleh sama dengan maker), ditegakkan otomatis oleh assertNotSelfApproval; tidak ada approval yang dilewati.
+
 ### Q57 ⚠️ — Pak Indra cuti, siapa approval final?
 
 Benar-benar tidak ada pengganti? Kalau ya, job menunggu — dan itu harus
@@ -222,6 +224,8 @@ disadari sebagai keputusan, bukan kecelakaan.
 
 Rancangan sekarang: tidak. Perlu dikonfirmasi — karena kalau staf yang input
 biaya tidak bisa lihat margin, mereka juga tidak bisa menangkap kesalahan.
+
+**JAWABAN (17 Agu 2026, Q-IRIS8-3): STAFF BOLEH lihat GP.** Izin report:view satu tingkat untuk OWNER/MANAGER/STAFF; R-A6 dicabut; RBAC.md sudah diselaraskan ke kode.
 
 ### Q59 🟡 — Login pakai Google Workspace?
 
@@ -292,8 +296,8 @@ terulang tinggi.
 | # | Pertanyaan | Ke | Ref | Status |
 |---|---|---|---|---|
 | Q69 | 🔴 Selisih invoice susulan (contoh: kekurangan Rp 1 juta) — **kena PPN/PPh lagi atau tidak?** Default sistem saat ini: kena, dihitung sebagai transaksi pajak baru dan berdiri sendiri. | NIKEN | R16.3 | menunggu — **blocker sebelum Slice 6 invoice selesai** |
-| Q70 | ⚠️ Addendum butuh persetujuan siapa sebelum berlaku — Manager saja, atau harus sampai Owner seperti job? | INDRA | R16.5 | menunggu |
-| Q71 | ⚠️ Label pembeda ("SUSULAN-1") ini **terlihat di kertas yang diterima customer**, atau cuma catatan internal ISLI? | NIKEN | R16.6 | menunggu |
+| Q70 | ⚠️ Addendum butuh persetujuan siapa sebelum berlaku — Manager saja, atau harus sampai Owner seperti job? | INDRA | R16.5 | DIJAWAB 13 Agu 2026 (Putaran 7): Manager/Owner, tidak boleh sama dengan pembuat - sudah sesuai default R16.5. |
+| Q71 | ⚠️ Label pembeda ("SUSULAN-1") ini **terlihat di kertas yang diterima customer**, atau cuma catatan internal ISLI? | NIKEN | R16.6 | DIJAWAB 13 Agu 2026 (Putaran 7): label terlihat di kertas yang diterima customer. |
 
 > Sambil menunggu jawaban, tabel `customer_invoice_addendum` sudah dibuat di
 > skema dengan default yang paling defensif: kena pajak, approval Manager/Owner,

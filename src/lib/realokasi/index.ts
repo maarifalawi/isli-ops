@@ -488,3 +488,30 @@ export async function daftarRealokasiBaris(dbOrTx: DbOrTx, originChargeLineId: s
     .where(eq(costReallocations.originChargeLineId, originChargeLineId))
     .orderBy(costReallocations.createdAt);
 }
+
+/**
+ * Daftar SEMUA proposal realokasi untuk UI /realokasi (Irisan 10 Item 8) —
+ * READ ONLY, tanpa logika: join jobs untuk jobNo asal/tujuan supaya tabel
+ * bisa menampilkan status per baris (PENDING = approved_by NULL; APPROVED =
+ * terisi). Overlay GP hanya memakai APPROVED (agregat Irisan 8 — tidak
+ * disentuh di sini).
+ */
+export async function daftarSemuaRealokasi(dbOrTx: DbOrTx) {
+  const asal = jobs;
+  return dbOrTx
+    .select({
+      id: costReallocations.id,
+      originJobId: costReallocations.originJobId,
+      originJobNo: asal.jobNo,
+      destinationJobId: costReallocations.destinationJobId,
+      jumlahIdr: costReallocations.jumlahIdr,
+      alasan: costReallocations.alasan,
+      createdBy: costReallocations.createdBy,
+      approvedBy: costReallocations.approvedBy,
+      approvedAt: costReallocations.approvedAt,
+      createdAt: costReallocations.createdAt,
+    })
+    .from(costReallocations)
+    .innerJoin(asal, eq(costReallocations.originJobId, asal.id))
+    .orderBy(costReallocations.createdAt);
+}

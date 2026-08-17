@@ -33,10 +33,16 @@ loadDotEnvFile(".env.local");
 loadDotEnvFile(".env");
 
 export default defineConfig({
+  // JSX runtime "automatic" — konsisten dengan Next 15 (tsconfig jsx:
+  // preserve). Tanpa ini, file .tsx di src/lib (mis. invoice-pdf) gagal di
+  // vitest dengan "React is not defined" padahal Next build normal.
+  esbuild: {
+    jsx: "automatic",
+  },
   test: {
     globals: true,
     environment: "node",
-    include: ["src/**/*.{test,spec}.ts", "tests/**/*.{test,spec}.ts"],
+    include: ["src/**/*.{test,spec}.{ts,tsx}", "tests/**/*.{test,spec}.{ts,tsx}"],
     exclude: ["tests/e2e/**"],
 
     // Zona waktu dikunci. Semua jatuh tempo, ETD, dan cut-off periode
