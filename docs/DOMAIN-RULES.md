@@ -692,5 +692,5 @@ identik antar baris addendum.
 
 ### R17.5 Approval
 Mengikuti pola R16.5: dibuat oleh Maker, disetujui Manager/Owner (≠ pembuat).
-⚠️ Asumsi, belum dikonfirmasi klien secara eksplisit untuk sisi vendor — lihat Q73.
+⚠️ Asumsi, belum dikonfirmasi klien secara eksplisit untuk sisi vendor — lihat Q77.
 

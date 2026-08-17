@@ -25,6 +25,20 @@
   buat akun uji Supabase DULU (scripts/create-supabase-users.md), baru isi
   4 Secrets di GitHub Settings. DATABASE_URL bukan secret (postgres service
   CI lokal).
+
+### Irisan 10 - Batch A / Item 3: beres-beres open questions - 17 Agu 2026
+
+- `docs/OPEN-QUESTIONS.md`: tutup formal 9 entri yang jawabannya sudah
+  tertulis dari sesi klien/Irisan 5-8 tapi baris lamanya masih kosong:
+  Q20, Q23, Q24, Q37, Q39, Q56, Q58, Q70, Q71 (masing-masing dengan dasar
+  jawaban yang dikutip). Tidak ada jawaban baru yang ditebak.
+- `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
+  "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
+  masih menunggu jawaban Indra adalah Q77).
+- `docs/PERTANYAAN-UNTUK-KLIEN.md` baru: daftar 29 pertanyaan siap kirim,
+  dikelompokkan per penerima (Niken: pajak + laporan/data; Fairol: data/
+  orang termasuk blocker Q41 SO BULAN xlsx; Pak Indra: akses + keputusan
+  operasional) + daftar tidak-mendesak + info penutupan administratif.
 ### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
 
 - **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`
