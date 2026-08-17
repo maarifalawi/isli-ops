@@ -12,6 +12,19 @@
 - Pencegahan insiden "lint fix mengubah CRLF ke LF" yang pernah terjadi di
   Irisan 7/8 pada mesin Windows. TANPA `git add --renormalize .` -
   renormalize massal hanya via commit terpisah dengan persetujuan eksplisit.
+
+### Irisan 10 - Batch A / Item 2: E2E CI Secrets - 17 Agu 2026
+
+- `.github/workflows/ci.yml`: job `e2e` dan `build` kini membaca
+  `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+  `E2E_TEST_EMAIL`, `E2E_TEST_PASSWORD` dengan pola fallback
+  (secrets.X || nilaiBoneka) - CI tetap hijau SEBELUM secrets diset;
+  setelah diset, spec login (smoke, master-crud) ikut berjalan otomatis
+  tanpa ubah workflow lagi.
+- `docs/SETUP-CI-SECRETS.md` baru: langkah lengkap untuk pemilik repo -
+  buat akun uji Supabase DULU (scripts/create-supabase-users.md), baru isi
+  4 Secrets di GitHub Settings. DATABASE_URL bukan secret (postgres service
+  CI lokal).
 ### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
 
 - **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`

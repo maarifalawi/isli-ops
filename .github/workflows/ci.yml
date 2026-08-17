@@ -167,14 +167,17 @@ jobs:
       - name: E2E
         run: pnpm test:e2e
         env:
-          # Nilai boneka — server cukup bisa boot untuk spec yang tidak butuh
-          # login Supabase asli (auth.spec: redirect ke /login). Spec yang
-          # butuh kredensial (smoke, master-crud) skip sendiri tanpa
-          # E2E_TEST_* — pola yang sama dengan job "Build produksi" di bawah.
-          # Kalau nanti secrets Supabase + E2E_TEST_* tersedia, ganti dengan
-          # secrets asli agar spec login ikut berjalan.
-          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
+          # Irisan 10 Item 2: baca GitHub Secrets bila sudah diset (lihat
+          # docs/SETUP-CI-SECRETS.md); fallback nilai boneka supaya CI tetap
+          # hijau SEBELUM secrets tersedia - server cukup boot untuk spec
+          # yang tidak butuh login Supabase asli (auth.spec: redirect ke
+          # /login). Spec ber-kredensial (smoke, master-crud) skip sendiri
+          # tanpa E2E_TEST_*. Setelah 4 Secrets diisi, spec login ikut
+          # berjalan otomatis tanpa perubahan workflow lagi.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy' }}
+          E2E_TEST_EMAIL: ${{ secrets.E2E_TEST_EMAIL || '' }}
+          E2E_TEST_PASSWORD: ${{ secrets.E2E_TEST_PASSWORD || '' }}
 
       - name: Simpan laporan kalau gagal
         if: failure()
@@ -208,5 +211,5 @@ jobs:
         env:
           # Nilai boneka; build Next.js butuh variabel ini ada, bukan valid.
           DATABASE_URL: postgresql://user:pass@localhost:5432/dummy
-          NEXT_PUBLIC_SUPABASE_URL: https://dummy.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: dummy
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://dummy.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy' }}
