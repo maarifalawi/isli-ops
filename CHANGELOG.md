@@ -125,7 +125,29 @@
   overlay realokasi) = 535 total; +1 e2e job-gp.spec (kartu tampil, GP
   terisi untuk job berbaris, kedua viewport).
 - Verifikasi: typecheck + lint 0 + vitest 535/535 + golden 46/46 + e2e
-  23 passed 1 fixme (V-INV-2 mobile) 0 failed. Tidak ada jawaban baru yang ditebak.
+  23 passed 1 fixme (V-INV-2 mobile) 0 failed.
+
+### Irisan 10 - Batch B / Item 8: UI Realokasi + fix nav mobile + fix timeout login e2e - 18 Agu 2026
+
+- `src/lib/realokasi/index.ts`: + daftarSemuaRealokasi (query READ join jobs asal,
+  tanpa logika). `src/lib/actions/realokasi.ts` (baru): 3 server action wrapper
+  TIPIS atas service 4e (ajukan/setujui/tolak) - nol guard yang ditulis ulang.
+- `src/app/realokasi/` (baru): halaman /realokasi - form pengajuan (job asal
+  GET -> baris aktif + job tujuan non-locked + jumlah + alasan Q06), tabel
+  status PENDING/APPROVED per baris, Setujui/Tolak hanya M/O dan tidak untuk
+  proposal sendiri (gating can(); service tetap penjaga otoritatif R-A1).
+  PENDING tidak mengubah GP - hanya APPROVED jadi overlay (agregat Irisan 8
+  tak disentuh). Nav "Realokasi" ditambahkan.
+- FIX M1 (regresi ditemukan smoke HP): link nav ke-7 meluap 375px -> nav
+  scrollable-horizontal (overflow-x-auto whitespace-nowrap); gulir di dalam
+  nav, document bebas horizontal-scroll, 7 link utuh, sentuh tetap 44px.
+- FIX N2 (test-infra durabil): timeout assert redirect login 15s di helper
+  login()/masuk() semua spec (6 file) - redirect Supabase kadang >5s default
+  di worker mobile; URL yang di-assert tetap "/" (bukan pelonggaran asersi).
+- Test: +2 unit gating realokasi (=537 total) + e2e realokasi.spec (STAFF:
+  form+tabel tampil, tanpa tombol Setujui) x2 viewport.
+- Verifikasi: typecheck + lint 0 + vitest 537/537 + golden 46/46 + e2e
+  server-fresh 25 passed 1 fixme (V-INV-2 mobile) 0 failed. Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).

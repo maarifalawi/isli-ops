@@ -14,7 +14,7 @@ async function login(page: Page): Promise<void> {
   await page.getByLabel("Email").fill(email);
   await page.getByLabel("Kata sandi").fill(password);
   await page.getByRole("button", { name: "Masuk" }).click();
-  await expect(page).toHaveURL("/");
+  await expect(page).toHaveURL("/", { timeout: 15_000 });
 }
 
 uji(
