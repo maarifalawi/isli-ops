@@ -886,3 +886,53 @@ export function kartuJobCariDariDetail(d: {
     gpPostRealokasiTeks: d.gpPostRealokasi === null ? null : fmt(d.gpPostRealokasi),
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Kartu GP/NETT halaman detail job (Irisan 10 Item 7) — server format  */
+/* ------------------------------------------------------------------ */
+
+import {
+  hitungGP as gpDariLines,
+  hitungGPpct,
+  hitungNETT,
+  sellingUntukGp,
+} from "@/lib/costing/index";
+
+/**
+ * Kartu GP/GP%/NETT satu job (Irisan 10 Item 7). Rumus TIDAK ditulis ulang:
+ * hitungGP/hitungGPpct/hitungNETT dari src/lib/costing (terkunci test 4d).
+ * PPN diambil dari kolom BEKU invoice TERBIT+ (I-INV-1) — TIDAK dihitung
+ * ulang di sini; job tanpa invoice → NETT null (tampil "—", bukan angka
+ * menyesatkan). null = "belum ada data", bukan nol.
+ */
+export interface KartuGpJob {
+  readonly gpTeks: string | null;
+  readonly gpPersenTeks: string | null;
+  readonly nettTeks: string | null;
+  readonly gpPostRealokasiTeks: string | null;
+  /** true kalau overlay realokasi APPROVED mengubah GP job ini. */
+  readonly adaRealokasi: boolean;
+  /** true kalau NETT belum bisa dihitung karena belum ada invoice TERBIT+. */
+  readonly nettMenungguInvoice: boolean;
+}
+
+export function kartuGpJob(
+  lines: readonly GpLine[],
+  ppnInvoiceIdr: Rupiah | null,
+  gpPostRealokasi: Rupiah | null,
+): KartuGpJob {
+  const gp = gpDariLines(lines);
+  const gpPersen = gp === null ? null : hitungGPpct(gp, sellingUntukGp(lines));
+  const nett =
+    gp === null || ppnInvoiceIdr === null ? null : hitungNETT(lines, ppnInvoiceIdr);
+  const adaRealokasi = gp !== null && gpPostRealokasi !== null && gpPostRealokasi !== gp;
+  return {
+    gpTeks: gp === null ? null : fmt(gp),
+    gpPersenTeks: gpPersen,
+    nettTeks: nett === null ? null : fmt(nett),
+    gpPostRealokasiTeks:
+      adaRealokasi && gpPostRealokasi !== null ? fmt(gpPostRealokasi) : null,
+    adaRealokasi,
+    nettMenungguInvoice: gp !== null && ppnInvoiceIdr === null,
+  };
+}

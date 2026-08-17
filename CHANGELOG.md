@@ -106,7 +106,26 @@
   di mobile; guard tetap terkunci 3 lapis - unit J1 + 30 integrasi Irisan 6 +
   UI FINAL-only. Catatan lengkap tertulis di spec.
 - Verifikasi: typecheck + lint 0 error + vitest 530/530 + golden 46/46 + e2e
-  21 passed 1 fixme (V-INV-2 mobile, Item 5) 0 failed. Tidak ada jawaban baru yang ditebak.
+  21 passed 1 fixme (V-INV-2 mobile, Item 5) 0 failed.
+
+### Irisan 10 - Batch B / Item 7: Kartu GP/NETT di /jobs/[id] - 17 Agu 2026
+
+- `src/lib/laporan/queries.ts`: + kartuGpJob view-model (Irisan 10 Item 7) -
+  rumus TIDAK ditulis ulang: hitungGP/hitungGPpct/hitungNETT dari costing
+  (terkunci test 4d). PPN = SUM kolom BEKU invoice TERBIT+ (I-INV-1, tidak
+  dihitung ulang); job tanpa invoice -> NETT "— (menunggu invoice)".
+  Overlay realokasi APPROVED via detailJobUntukLaporan (pola agregat Irisan 8,
+  tanpa logika realokasi baru). null = "belum ada data" (—), bukan Rp0
+  menyesatkan (pola costing).
+- `src/app/jobs/[id]/page.tsx`: kartu 4 kolom server-formatted (GP
+  pencadangan, GP %, NETT, GP setelah realokasi - oranye bila berubah);
+  komponen hanya merender string (pola kartuJobCariDariDetail 8b). Komentar
+  stale "GP menyusul di irisan berikutnya" dibersihkan (juga di /jobs/page).
+- Test: +5 unit kartuGpJob (kebijakan tampilan: null-vs-0, NETT-GP=PPN Q09,
+  overlay realokasi) = 535 total; +1 e2e job-gp.spec (kartu tampil, GP
+  terisi untuk job berbaris, kedua viewport).
+- Verifikasi: typecheck + lint 0 + vitest 535/535 + golden 46/46 + e2e
+  23 passed 1 fixme (V-INV-2 mobile) 0 failed. Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).
