@@ -441,3 +441,33 @@ Yang TETAP MENUNGGU (tidak berubah oleh Irisan 7): Q14 (mekanisme PPh 23
 potong vendor — R3.7 ⚠️ DUGAAN; `pph23_idr` input manual eksplisit, TIDAK
 pernah dihitung otomatis), Q64 (kode biaya tanpa vendor), Q77 (approval
 addendum vendor R17.5), Q21 (upload lampiran invoice vendor).
+
+
+---
+
+# Irisan 8 - Laporan: Q-IRIS8-1..5 — DIJAWAB USER 17 Agu 2026 (default defensif; sebagian MENUNGGU konfirmasi klien)
+
+Keputusan Tahap 1-3 Irisan 8. Diimplementasikan dengan default ini; yang
+bertanda MENUNGGU tetap terbuka untuk konfirmasi Bu Niken/Pak Indra (pola
+Q69/Q14) tapi TIDAK menunda implementasi.
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| Q-IRIS8-1 | Basis GP laporan: pencadangan vs actual? Apakah Irisan 8 = irisan "actual-based GP" Q-4d-2? Konflik 280.150.000 vs hitungGP data lengkap? | (a) TIDAK — Irisan 8 BUKAN irisan actual-based GP; tetap basis pencadangan_idr. ADR-0007 TETAP Proposed (jangan ubah status). (b) Konflik CAKUPAN DATA, bukan definisi: hitungGP TIDAK diubah, TIDAK ada rumus GP kedua. Dashboard menjalankan hitungGP atas DATA LENGKAP (semua charge line termasuk reimburse) → untuk 75 job penuh hasilnya **252.482.307** (selling non-reimburse 2.035.760.000 − semua buying 1.783.277.693), BUKAN 280.150.000 (angka fixture CSV yang tidak memuat rincian reimburse). Konstanta golden baru Irisan 8 = HASIL HITUNGAN hitungGP atas data rentang, dengan derivasi di komentar test. |
+| Q-IRIS8-2 | Basis periode per laporan + timezone? (= Q68) | Default defensif MENUNGGU konfirmasi Niken: Dashboard GP & ranking (8b/8c) = jobs.tahun/jobs.bulan (bulan penugasan job). Rekap vendor R7.3 = dibayar_at, timezone Asia/Jakarta (WIB), hanya status DIBAYAR. Rekap PPN/PPh23 = customer_invoices.issueDate, WIB, hanya TERBIT ke atas. |
+| Q-IRIS8-3 | RBAC laporan: RBAC.md (report.view_all O/M, R-A6 aktif, Q58 terbuka) vs kode (report:view semua role, R-A6 dicabut)? | KODE MENANG (preseden konsisten). report:view satu izin untuk O/M/S — STAFF BOLEH lihat GP (R-A6 dicabut 13 Agu 2026, final). RBAC.md diselaraskan ke kode (hapus report.view_all/view_own stale), Q58 ditutup. Tidak ada izin baru. |
+| Q-IRIS8-4 | R7.3 kolom & scope rekap vendor? | Kolom: vendor, bulan, jumlah invoice, total jumlah_idr dibayar, total pph23_idr (kolom terpisah — keperluan pajak). Hanya status DIBAYAR. Addenda vendor R17 DIKECUALIKAN (tabel idle, tidak disentuh — keterbatasan disengaja sampai R17 dibangun). |
+| Q-IRIS8-5 | Filter default status? | Job DIBATALKAN: DIKECUALIKAN dari SEMUA laporan keuangan (dashboard GP, ranking 8c, drill-down 8d). Job belum FINAL (DRAFT/DIAJUKAN/DISETUJUI_1/UNLOCK_REQUESTED): DIIKUTSERTAKAN di dashboard GP (selaras SUMMARY Bu Niken) dengan kolom status job WAJIB tampil tiap baris. Invoice DRAFT/BATAL: DIKECUALIKAN dari rekap pajak PPN/PPh23. |
+
+Catatan implementasi Irisan 8 (terkunci keputusan di atas):
+
+- hitungGP/hitungGPpct/hitungNETT dari src/lib/costing/ TIDAK diubah; laporan
+  WAJIB reuse (dilarang rumus GP kedua).
+- Semua query laporan MURNI SELECT (R14.5: dilarang menyimpan rekap; tanpa
+  MATERIALIZED VIEW/tabel snapshot).
+- SUM(bigint) Postgres datang sebagai string/NUMERIC — wajib BigInt(),
+  dilarang Number().
+- GP% agregat = formatPercent(totalGP, totalSelling) — total-based, BUKAN
+  rata-rata GP% per job.
+- Export Excel (exceljs, sudah terpasang) dari JSON laporan yang sama —
+  tidak menghitung ulang.

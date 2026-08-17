@@ -2,6 +2,38 @@
 
 ## [Unreleased]
 
+### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
+
+- **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`
+  (rentang bulan di URL R14.1, boundary WIB untuk dibayar_at Q-IRIS8-2),
+  `agregat.ts` (agregasi murni reuse `hitungGP` — tanpa rumus GP kedua;
+  GP% total-based; invarian realokasi ΣGP tetap), `queries.ts` (murni SELECT,
+  R14.5 tanpa tabel rekap). Keputusan Q-IRIS8-1..5 dikunci di
+  `tests/unit/laporan-agregat.test.ts` (20 test) + golden baru
+  `tests/golden/laporan-gp.golden.test.ts` (7 test): GP laporan 75 job atas
+  data lengkap = **252.482.307** (Q-IRIS8-1b: berbeda sah dari 280.150.000
+  definisi simetris fixture; tidak ada angka golden existing yang berubah).
+- **Peringkat multi-sumbu (8c) + drill-down (8d):** `peringkatDariRingkasan`
+  (customer/segmen/sales/rute, urut selling menurun R14.2, kolom lengkap
+  R14.3), `peringkatVendorBelanja` (belanja — kelompok terpisah, TIDAK
+  digabung revenue), `jobEntitasDariRingkasan` (lapis peringkat→job).
+  Terkunci `tests/unit/laporan-peringkat.test.ts` (9 test): mengubah rentang
+  mengubah urutan; total tiap lapisan == lapisan atas untuk SEMUA sumbu.
+- **UI `/laporan` (8b):** dashboard GP bulan×segmen, rekap vendor per bulan
+  (R7.3), rekap pajak PPN/PPh 23 (kolom beku I-INV-1, hanya TERBIT+), tab
+  peringkat + drill-down daftar job, pencarian job satu halaman. Rentang di
+  URL. Semua uang string terformat dari server (`kartuLaporanDariRingkasan`,
+  `kartuJobCariDariDetail`) — komponen TIDAK berhitung uang. Izin
+  `report:view` dicek server-side.
+- **Export Excel (8e):** `src/lib/laporan/export-excel.ts` + route
+  `GET /laporan/export` (exceljs) — mengikuti rentang & sumbu aktif; 4 sheet
+  (Dashboard GP, Peringkat sumbu, Rekap Vendor, Rekap Pajak).
+- **Fix Irisan 7:** commit terpisah `2da5422` — rename
+  `tests/unit/vendor-invoice` → `vendor-invoice-state.test.ts` (file tanpa
+  ekstensi tidak pernah tereksekusi vitest; +17 test kini berjalan).
+- **Verifikasi:** typecheck ✓, lint (biome) ✓, `pnpm test` 35 file / 518 test
+  ✓, `pnpm test:golden` 5 file / 46 test ✓ (39 existing + 7 baru).
+
 ### Irisan 3 — Master data + CRUD + RBAC + deteksi kemiripan + audit (ditutup 16 Agu 2026)
 
 - **Entitas (5):** Customer, Vendor, Port, Ship Line, Charge Code — skema +
