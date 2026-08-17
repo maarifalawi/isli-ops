@@ -1,5 +1,7 @@
 import { db } from "@/db/index";
 import { users, vendorInvoiceAddenda, vendorInvoices, vendors } from "@/db/schema/index";
+import type { RentangBulan } from "@/lib/laporan/periode";
+import { peringkatVendorBelanja, rekapVendorPerBulan } from "@/lib/laporan/queries";
 import {
   buatAddendumVendor,
   catatBayarAddendumVendor,
@@ -59,7 +61,14 @@ async function invoiceDibayarFixture(makerId: string) {
 }
 
 afterAll(async () => {
-  for (const l of [label, `${label}-UQ`, `${label}-UQ-2`, `${label}-ND`]) {
+  for (const l of [
+    label,
+    `${label}-UQ`,
+    `${label}-UQ-2`,
+    `${label}-ND`,
+    `${label}-RK`,
+    `${label}-RK2`,
+  ]) {
     await db
       .delete(vendorInvoiceAddenda)
       .where(eq(vendorInvoiceAddenda.labelInternal, l));
@@ -197,4 +206,123 @@ describe("addenda vendor R17 — integration", () => {
     });
     expect(hasil.ok).toBe(false);
   });
+});
+
+/*
+ * Fase 2 — rekap R7.3 (Irisan 10 Item 10): addendum yang dibayar_at terisi
+ * masuk uang keluar vendor di bulan DIBAYAR addendum itu sendiri (bukan
+ * bulan invoice asal); addendum belum dibayar TIDAK masuk; jumlahInvoice
+ * tetap menghitung invoice DIBAYAR saja (addendum = nomor sama dipakai
+ * ulang, R17). Peringkat belanja vendor ikut menyertakan addenda.
+ */
+describe("rekap R7.3 + addenda dibayar — integration", () => {
+  const AGU: RentangBulan = {
+    dari: { tahun: 2026, bulan: 8 },
+    sampai: { tahun: 2026, bulan: 8 },
+  };
+  const SEP: RentangBulan = {
+    dari: { tahun: 2026, bulan: 9 },
+    sampai: { tahun: 2026, bulan: 9 },
+  };
+  const AGU_SEP: RentangBulan = {
+    dari: { tahun: 2026, bulan: 8 },
+    sampai: { tahun: 2026, bulan: 9 },
+  };
+
+  it(
+    "addendum dibayar masuk bulan bayarnya; belum dibayar tidak; jumlahInvoice tak berubah",
+    { timeout: 30_000 },
+    async () => {
+      const p = await pelaksana();
+      const [vendor] = await db
+        .insert(vendors)
+        .values({ nama: `VENDOR-RK-${rand()}` })
+        .returning();
+      if (!vendor) throw new Error("fixture vendor rekap gagal");
+      const [inv] = await db
+        .insert(vendorInvoices)
+        .values({
+          vendorId: vendor.id,
+          vendorInvoiceNo: `INV-RK-${rand()}`,
+          tanggalInvoice: "2026-08-01",
+          jumlahIdr: 10_000_000n,
+          pph23Idr: 0n,
+          status: "DIBAYAR",
+          dibayarAt: new Date("2026-08-05T02:00:00Z"),
+          diterimaOleh: p.staff.id,
+        })
+        .returning();
+      if (!inv) throw new Error("fixture invoice rekap gagal");
+
+      // Addendum 3,5jt DIBAYAR 5 Sep 2026 (pph23 70rb) + addendum 1jt belum
+      // dibayar — keduanya di-insert langsung (query rekap hanya membaca).
+      await db.insert(vendorInvoiceAddenda).values([
+        {
+          originalVendorInvoiceId: inv.id,
+          addendumSeq: 1,
+          labelInternal: `${label}-RK`,
+          alasan: "sisa tagihan (R17)",
+          jumlahIdr: 3_500_000n,
+          pph23Applied: true,
+          pph23Idr: 70_000n,
+          issueYear: 2026,
+          issueMonth: 9,
+          status: "ISSUED",
+          createdBy: p.staff.id,
+          dibayarAt: new Date("2026-09-05T02:00:00Z"),
+        },
+        {
+          originalVendorInvoiceId: inv.id,
+          addendumSeq: 2,
+          labelInternal: `${label}-RK2`,
+          alasan: "belum dibayar",
+          jumlahIdr: 1_000_000n,
+          pph23Applied: false,
+          pph23Idr: 0n,
+          issueYear: 2026,
+          issueMonth: 9,
+          status: "ISSUED",
+          createdBy: p.staff.id,
+        },
+      ]);
+
+      // Agustus: hanya invoice asli — addendum September tidak bocor mundur.
+      const rekapAgu = (await rekapVendorPerBulan(db, AGU)).filter(
+        (r) => r.vendorId === vendor.id,
+      );
+      expect(rekapAgu).toHaveLength(1);
+      expect(rekapAgu[0]?.bulan).toBe(8);
+      expect(rekapAgu[0]?.jumlahInvoice).toBe(1);
+      expect(rekapAgu[0]?.totalDibayar).toBe(10_000_000n);
+      expect(rekapAgu[0]?.totalPph23).toBe(0n);
+
+      // September: addendum 3,5jt masuk bulan bayarnya; addendum belum
+      // dibayar (1jt) TIDAK masuk; jumlahInvoice = 0 (bukan invoice baru).
+      const rekapSep = (await rekapVendorPerBulan(db, SEP)).filter(
+        (r) => r.vendorId === vendor.id,
+      );
+      expect(rekapSep).toHaveLength(1);
+      expect(rekapSep[0]?.bulan).toBe(9);
+      expect(rekapSep[0]?.jumlahInvoice).toBe(0);
+      expect(rekapSep[0]?.totalDibayar).toBe(3_500_000n);
+      expect(rekapSep[0]?.totalPph23).toBe(70_000n);
+
+      // Rentang penuh: dua baris bulanan, total 13,5jt.
+      const rekapAguSep = (await rekapVendorPerBulan(db, AGU_SEP)).filter(
+        (r) => r.vendorId === vendor.id,
+      );
+      expect(rekapAguSep).toHaveLength(2);
+      const totalAguSep = rekapAguSep.reduce((s, r) => s + r.totalDibayar, 0n);
+      expect(totalAguSep).toBe(13_500_000n);
+
+      // Peringkat belanja: addenda dibayar ikut (10jt + 3,5jt, 1 invoice).
+      const peringkat = (await peringkatVendorBelanja(db, AGU_SEP)).filter(
+        (r) => r.vendorNama === vendor.nama,
+      );
+      expect(peringkat).toHaveLength(1);
+      expect(peringkat[0]?.totalDibayar).toBe(13_500_000n);
+      expect(peringkat[0]?.jumlahInvoice).toBe(1);
+      expect(peringkat[0]?.totalPph23).toBe(70_000n);
+    },
+  );
 });

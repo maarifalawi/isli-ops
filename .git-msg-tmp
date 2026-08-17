@@ -1,8 +1,0 @@
-feat(vendor-invoice): Irisan 10 Item 10 fase 1 - addenda vendor service (R17)
-
-- src/lib/vendor-invoice/addenda.ts: state DRAFT-DISETUJUI-ISSUED, approval M/O tidak sama pembuat (R-A1, default Q77), dibayar_at guard (hanya setelah ISSUED), sisa kuota R17.3 dihitung saat tampil (R14.5)
-- src/lib/audit/index.ts: entitas VENDOR_INVOICE_ADDENDUM (aksi existing, tidak ada aksi baru)
-- TIDAK menyentuh uq_vendor_invoice, vendor_invoices, migrasi, ADR-0007
-- 8 test: 5 unit (transisi, sisa kuota) + 3 integration (full flow, R-A1, bayar-dini, skip-tingkat, bayar-2x, uq duplikat)
-
-Verifikasi: typecheck, lint, 550/550 test, 46/46 golden, e2e run#1 25 passed + 1 fixme + 0 failed (flake login-mobile lokal berulang sejak Item 5; CI retries=2 otoritas)

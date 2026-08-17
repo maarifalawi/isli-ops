@@ -10,7 +10,8 @@
  *     DILARANG Number() (presisi hilang > 2^53).
  *  3. Filter default Q-IRIS8-5: job DIBATALKAN & soft-deleted DIKECUALIKAN
  *     dari semua laporan keuangan; job belum FINAL IKUT dengan kolom status.
- *  4. Rekap vendor (R7.3): hanya DIBAYAR, bulan dari dibayar_at versi WIB.
+ *  4. Rekap vendor (R7.3): hanya DIBAYAR + addenda R17 yang dibayar_at
+ *     terisi; bulan dari dibayar_at versi WIB.
  *  5. Rekap pajak: hanya invoice TERBIT ke atas (kolom beku I-INV-1).
  *  6. Realokasi: hanya APPROVED (approvedBy IS NOT NULL) yang jadi overlay.
  *
@@ -26,6 +27,7 @@ import {
   customers,
   jobs,
   paymentsIn,
+  vendorInvoiceAddenda,
   vendorInvoices,
   vendors,
 } from "@/db/schema/index";
@@ -344,8 +346,12 @@ export interface BarisRekapVendor {
 
 /**
  * R7.3 — Rekap pembayaran per vendor per bulan (keperluan pajak, permintaan
- * Bu Niken). HANYA status DIBAYAR; bulan = kalender WIB dari dibayar_at
- * (30 Juni 23:30 UTC → Juli). Addenda vendor R17 DIKECUALIKAN (tabel idle).
+ * Bu Niken). Invoice HANYA status DIBAYAR; bulan = kalender WIB dari
+ * dibayar_at (30 Juni 23:30 UTC → Juli). Addenda vendor R17 TERMASUK
+ * (dibayar_at terisi): addendum dibayar di bulan X menambah uang keluar
+ * vendor di bulan X (jumlahIdr + pph23Idr), BUKAN di bulan invoice asal.
+ * Kolom jumlahInvoice tetap menghitung invoice DIBAYAR saja — addendum
+ * memakai ulang nomor invoice yang sama (R17), bukan invoice baru.
  * PPh 23 tampil sebagai KOLOM TERPISAH (Q-IRIS8-4) — dijumlah dari nilai
  * input manual pph23_idr, TIDAK pernah dihitung ulang (R3.7/Q14).
  */
@@ -353,19 +359,38 @@ export async function rekapVendorPerBulan(
   dbOrTx: DbOrTx,
   rentang: RentangBulan,
 ): Promise<readonly BarisRekapVendor[]> {
-  const rows = await dbOrTx
-    .select({
-      vendorId: vendorInvoices.vendorId,
-      vendorNama: vendors.nama,
-      dibayarAt: vendorInvoices.dibayarAt,
-      jumlahIdr: vendorInvoices.jumlahIdr,
-      pph23Idr: vendorInvoices.pph23Idr,
-    })
-    .from(vendorInvoices)
-    .innerJoin(vendors, eq(vendorInvoices.vendorId, vendors.id))
-    .where(
-      and(eq(vendorInvoices.status, "DIBAYAR"), isNotNull(vendorInvoices.dibayarAt)),
-    );
+  // Dua sumber uang keluar vendor: (1) invoice berstatus DIBAYAR, (2)
+  // addendum R17 yang dibayar_at terisi (vendor dari invoice asal).
+  const [rows, addendaRows] = await Promise.all([
+    dbOrTx
+      .select({
+        vendorId: vendorInvoices.vendorId,
+        vendorNama: vendors.nama,
+        dibayarAt: vendorInvoices.dibayarAt,
+        jumlahIdr: vendorInvoices.jumlahIdr,
+        pph23Idr: vendorInvoices.pph23Idr,
+      })
+      .from(vendorInvoices)
+      .innerJoin(vendors, eq(vendorInvoices.vendorId, vendors.id))
+      .where(
+        and(eq(vendorInvoices.status, "DIBAYAR"), isNotNull(vendorInvoices.dibayarAt)),
+      ),
+    dbOrTx
+      .select({
+        vendorId: vendorInvoices.vendorId,
+        vendorNama: vendors.nama,
+        dibayarAt: vendorInvoiceAddenda.dibayarAt,
+        jumlahIdr: vendorInvoiceAddenda.jumlahIdr,
+        pph23Idr: vendorInvoiceAddenda.pph23Idr,
+      })
+      .from(vendorInvoiceAddenda)
+      .innerJoin(
+        vendorInvoices,
+        eq(vendorInvoiceAddenda.originalVendorInvoiceId, vendorInvoices.id),
+      )
+      .innerJoin(vendors, eq(vendorInvoices.vendorId, vendors.id))
+      .where(isNotNull(vendorInvoiceAddenda.dibayarAt)),
+  ]);
 
   interface Akum {
     vendorId: string;
@@ -377,10 +402,13 @@ export async function rekapVendorPerBulan(
     pph: bigint;
   }
   const map = new Map<string, Akum>();
-  for (const r of rows) {
-    if (!r.dibayarAt) continue;
-    const b = bulanDibayarWib(r.dibayarAt);
-    if (!bulanDalamRentang(b, rentang)) continue;
+  const akumulasi = (
+    r: { vendorId: string; vendorNama: string; jumlahIdr: bigint; pph23Idr: bigint },
+    dibayarAt: Date,
+    hitungInvoice: boolean,
+  ) => {
+    const b = bulanDibayarWib(dibayarAt);
+    if (!bulanDalamRentang(b, rentang)) return;
     const k = `${r.vendorId}|${kunciBulan(b)}`;
     let cur = map.get(k);
     if (!cur) {
@@ -395,9 +423,19 @@ export async function rekapVendorPerBulan(
       };
       map.set(k, cur);
     }
-    cur.n += 1;
+    // Addendum BUKAN invoice baru (nomor sama dipakai ulang, R17) — uangnya
+    // masuk total, jumlah dokumen invoice tidak.
+    if (hitungInvoice) cur.n += 1;
     cur.dib += r.jumlahIdr;
     cur.pph += r.pph23Idr;
+  };
+  for (const r of rows) {
+    if (!r.dibayarAt) continue;
+    akumulasi(r, r.dibayarAt, true);
+  }
+  for (const a of addendaRows) {
+    if (!a.dibayarAt) continue;
+    akumulasi(a, a.dibayarAt, false);
   }
   return [...map.values()]
     .sort(
@@ -751,8 +789,10 @@ export function peringkatDariRingkasan(
 }
 
 /**
- * Peringkat BELANJA vendor (kelompok terpisah, R14.2) — urut nilai invoice
- * vendor DIBAYAR menurun. Basis periode sama seperti R7.3 (dibayar_at WIB).
+ * Peringkat BELANJA vendor (kelompok terpisah, R14.2) — urut total belanja
+ * vendor menurun: invoice DIBAYAR + addenda R17 yang dibayar_at terisi
+ * (Irisan 10 Item 10 fase 2). Basis periode sama seperti R7.3 (dibayar_at
+ * WIB); jumlahInvoice tetap menghitung invoice DIBAYAR saja.
  */
 export async function peringkatVendorBelanja(
   dbOrTx: DbOrTx,

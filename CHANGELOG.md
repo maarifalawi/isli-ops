@@ -178,6 +178,35 @@
   dikelompokkan per penerima (Niken: pajak + laporan/data; Fairol: data/
   orang termasuk blocker Q41 SO BULAN xlsx; Pak Indra: akses + keputusan
   operasional) + daftar tidak-mendesak + info penutupan administratif.
+
+### Irisan 10 - Batch C / Item 10: Addenda Vendor R17 (fase 1 service + fase 2 rekap R7.3) - 18 Agu 2026
+
+- **Fase 1 (commit `1cb8875`):** `src/lib/vendor-invoice/addenda.ts` baru -
+  addendum invoice vendor R17: satu nomor invoice boleh SENGAJA dipakai ulang
+  menagih sisa di bulan berikutnya; alur DRAFT -> DISETUJUI -> ISSUED ->
+  dibayar_at (guard: hanya setelah ISSUED); approval Manager/Owner tidak
+  boleh pembuat (R-A1, default Q77); sisa kuota R17.3 = jumlah asli - SUM
+  addendum dibayar, dihitung saat tampil (R14.5). Audit entitas
+  VENDOR_INVOICE_ADDENDUM. TIDAK menyentuh uq_vendor_invoice/migrasi (tabel
+  sudah ada dari Irisan 7). 8 test (5 unit + 3 integration).
+- **Fase 2 (commit ini):** revisi rekap R7.3 `src/lib/laporan/queries.ts` -
+  `rekapVendorPerBulan` kini menyertakan addenda yang dibayar_at terisi:
+  addendum dibayar di bulan X menambah uang keluar vendor di bulan X
+  (jumlahIdr + pph23Idr, bulan dari dibayar_at WIB), BUKAN di bulan invoice
+  asal. `peringkatVendorBelanja` otomatis ikut (total belanja per vendor
+  termasuk addenda dibayar). Kolom jumlahInvoice tetap menghitung invoice
+  DIBAYAR saja (addendum = nomor sama dipakai ulang, bukan invoice baru).
+  Komentar "Addenda vendor R17 DIKECUALIKAN (tabel idle)" diganti "Addenda
+  vendor R17 TERMASUK (dibayar_at terisi)". +1 integration test rekap
+  (bulan bayar vs bulan asal, addendum belum dibayar tak masuk, peringkat).
+- UI/export tak berubah (pola view-model sama - hanya sumber baris rekap
+  bertambah). Golden test tak tersentuh.
+- FIX e2e `invoice-pdf.spec.ts` (bug laten Item 9, ditemukan run penuh ini):
+  selector `a[href$="/pdf"]` tak pernah cocok karena href berakhiran
+  `?download=1` - ganti locator role `getByRole("link", { name: "Cetak PDF" })`.
+  Asersi TIDAK dilonggarkan (visible + 200 + content-type + magic bytes
+  `%PDF-` tetap). Data seed O3 diverifikasi ada sebelum diagnosa selector.
+
 ### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
 
 - **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`

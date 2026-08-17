@@ -17,7 +17,10 @@ uji("PDF invoice terbit dapat diunduh (application/pdf, isi > 0)", async ({ page
   await login(page);
   await page.goto("/invoice");
   // Cari link Cetak PDF pertama (invoice seed TERBIT di fixture).
-  const tautan = page.locator('a[href$="/pdf"]').first();
+  // FIX Irisan 10 fase 2: selector lama a[href$="/pdf"] tak pernah cocok —
+  // href berakhiran "?download=1", bukan "/pdf" (bug laten Item 9, baru
+  // terlihat saat run penuh ini). Locator role lebih tahan perubahan href.
+  const tautan = page.getByRole("link", { name: "Cetak PDF" }).first();
   await expect(tautan).toBeVisible();
   const url = await tautan.getAttribute("href");
   const res = await page.request.get(url ?? "/invoice");
