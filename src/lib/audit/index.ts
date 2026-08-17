@@ -101,6 +101,8 @@ export const ENTITAS_AUDIT = [
   "CUSTOMER_INVOICE_ADDENDUM",
   /* Irisan 7: invoice vendor (AP) — receive/verify/pay/batal. */
   "VENDOR_INVOICE",
+  /* Irisan 10 Item 10: addenda vendor R17 — sisa dibayar bulan berikutnya. */
+  "VENDOR_INVOICE_ADDENDUM",
 ] as const;
 
 export type EntitasAudit = (typeof ENTITAS_AUDIT)[number];
