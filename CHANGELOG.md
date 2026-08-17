@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Irisan 10 - Batch A / Item 1: .gitattributes - 17 Agu 2026
+
+- File `.gitattributes` baru: `* text=auto eol=lf` untuk semua file teks
+  (selaras default LF Biome & CI), binari eksplisit `-text`
+  (png/jpg/jpeg/gif/webp/ico/pdf/doc/docx/xls/xlsx/ppt/pptx/zip/gz/
+  woff/woff2/ttf/otf/exe/dll - melindungi dokumen asli klien di
+  `docs/source-of-truth/`), skrip Windows (`ps1/bat/cmd`) dibiarkan CRLF.
+- Pencegahan insiden "lint fix mengubah CRLF ke LF" yang pernah terjadi di
+  Irisan 7/8 pada mesin Windows. TANPA `git add --renormalize .` -
+  renormalize massal hanya via commit terpisah dengan persetujuan eksplisit.
 ### Irisan 8 — Laporan & analisis (8a fondasi + 8b rekap + 8c peringkat + 8d drill-down + 8e export) — 17 Agu 2026
 
 - **Fondasi (8a, sesi sebelumnya):** modul `src/lib/laporan/` — `periode.ts`
