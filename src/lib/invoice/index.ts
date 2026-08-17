@@ -3,6 +3,7 @@ import {
   chargeLines,
   customerInvoiceAddenda,
   customerInvoices,
+  customers,
   invoiceLines,
   jobs,
   paymentsIn,
@@ -80,6 +81,9 @@ function teks(v: unknown): string | null {
   const s = String(v ?? "").trim();
   return s.length > 0 ? s : null;
 }
+
+/** Format UUID v4 standar (input publik harus dicek sebelum menyentuh DB). */
+const POLA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Nama aksi audit per transisi invoice (pola AKSI_AUDIT_PER_TRANSISI). */
 const AKSI_AUDIT_PER_AKSI: Record<AksiInvoice, AksiAudit> = {
@@ -164,8 +168,18 @@ export async function createDraftInvoice(
     if (e instanceof AuthorizationError) return gagal(e.message);
     throw e;
   }
+
   const jobId = teks(input.jobId);
   if (!jobId) return gagal("Job wajib dipilih.");
+
+  /*
+   * J1b-1 (Irisan 10 Item 6): jobId datang dari input publik. UUID invalid
+   * memicu error Postgres 22P02 SEBELUM guard "tidak ditemukan" tercapai —
+   * server action crash jadi error page. Validasi format di JS murni:
+   * bukan UUID → langsung pesan ramah, tanpa query DB. Perilaku untuk UUID
+   * VALID (ditemukan / tidak) sama persis seperti Irisan 6.
+   */
+  if (!POLA_UUID.test(jobId)) return gagal("Job tidak ditemukan.");
 
   return dbOrTx.transaction(async (tx) => {
     const [job] = await tx
@@ -937,6 +951,40 @@ export async function terbitkanAddendum(
 /** Daftar invoice satu job (untuk halaman detail / guard J-INV-3/4). */
 export async function daftarInvoiceJob(dbOrTx: DbOrTx, jobId: string) {
   return dbOrTx.select().from(customerInvoices).where(eq(customerInvoices.jobId, jobId));
+}
+
+/**
+ * Daftar invoice semua job untuk UI /invoice (Irisan 10 Item 6) — READ ONLY,
+ * tanpa logika uang: nilai dikembalikan mentah (bigint) untuk diformat UI.
+ * Join jobs + customers untuk kolom filter (jobNo, nama customer).
+ */
+export async function daftarInvoicePelanggan(dbOrTx: DbOrTx) {
+  return dbOrTx
+    .select({
+      id: customerInvoices.id,
+      invoiceNo: customerInvoices.invoiceNo,
+      status: customerInvoices.status,
+      jobId: customerInvoices.jobId,
+      jobNo: jobs.jobNo,
+      customerId: customerInvoices.customerId,
+      customerNama: customers.nama,
+      issueDate: customerInvoices.issueDate,
+      dueDate: customerInvoices.dueDate,
+      grandTotalIdr: customerInvoices.grandTotalIdr,
+      dppIdr: customerInvoices.dppIdr,
+      ppnIdr: customerInvoices.ppnIdr,
+      pph23Applied: customerInvoices.pph23Applied,
+      pph23Idr: customerInvoices.pph23Idr,
+      issuedBeforePod: customerInvoices.issuedBeforePod,
+    })
+    .from(customerInvoices)
+    .innerJoin(jobs, eq(customerInvoices.jobId, jobs.id))
+    .innerJoin(customers, eq(customerInvoices.customerId, customers.id))
+    .orderBy(
+      customerInvoices.issueYear,
+      customerInvoices.issueMonth,
+      customerInvoices.id,
+    );
 }
 
 /** Total pembayaran masuk satu invoice — dihitung saat tampil (R14.5). */

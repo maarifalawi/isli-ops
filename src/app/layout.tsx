@@ -48,6 +48,12 @@ export default function RootLayout({
               >
                 Invoice Vendor
               </a>
+              <a
+                href="/invoice"
+                className="flex min-h-[44px] items-center text-label text-ink-48 hover:text-ink"
+              >
+                Invoice
+              </a>
             </nav>
             <span className="text-label text-ink-48">Irisan 8 · Laporan</span>
           </div>

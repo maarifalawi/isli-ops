@@ -78,7 +78,35 @@
   desktop e2e + 7 unit test + arsitektur server-side. Buka kembali saat
   Playwright/Next.js update atau sesi debug dengan server log.
 - Verifikasi: typecheck + lint + vitest 525/525 + golden 46/46 + e2e
-  19 passed 1 fixme 0 failed. Tidak ada jawaban baru yang ditebak.
+  19 passed 1 fixme 0 failed.
+
+### Irisan 10 - Batch B / Item 6: UI Invoice Customer (/invoice) - 17 Agu 2026
+
+- `src/app/invoice/` (baru): halaman /invoice - daftar invoice (join job+customer,
+  11 kolom, DPP/PPN/PPh23/Total dari kolom BEKU I-INV-1, komponen hanya
+  memformat), form draft (dropdown job FINAL saja, tanggal POD R9.4, centang
+  PPh23 R3.5 eksplisit), aksi per status via gating.ts (can()): terbitkan/kirim
+  O/M, batalkan OWNER saja, bayar O/M/S. Nav "Invoice" ditambahkan.
+- `src/lib/actions/invoice.ts` (baru): 8 server action wrapper TIPIS atas
+  service Irisan 6 - nol logika state machine/authz/audit/pajak yang ditulis
+  ulang. Nomor invoice TIDAK PERNAH disetel UI: alokasi via
+  allocateInvoiceNumber di dalam issueInvoice (satu transaksi dengan beku
+  pajak, R2 + I-INV-1). dueDate manual wajib (R9.2), pph23Applicable selalu
+  eksplisit param issue (R3.5).
+- `src/lib/invoice/index.ts`: + daftarInvoicePelanggan (query read join
+  jobs+customers, READ ONLY tanpa logika uang). + Perbaikan ketahanan J1b-1
+  (izin user): validasi format UUID murni JS di createDraftInvoice - jobId
+  non-UUID dari input publik kini return gagal("Job tidak ditemukan.")
+  alih-alih crash error page (Postgres 22P02 lewat DrizzleQueryError).
+  Perilaku UUID valid sama persis Irisan 6; test Irisan 6 tak berubah.
+- Test: +5 unit (4 gating per peran + 1 J1 UUID invalid tanpa throw) = 530
+  total. E2e invoice.spec.ts: skenario halaman x2 viewport (form draft STAFF,
+  dropdown FINAL-only) hijau. Skenario guard R9.4 via injeksi-DOM DIHAPUS
+  (keputusan K1): anti-pattern Playwright x React hydration non-deterministik
+  di mobile; guard tetap terkunci 3 lapis - unit J1 + 30 integrasi Irisan 6 +
+  UI FINAL-only. Catatan lengkap tertulis di spec.
+- Verifikasi: typecheck + lint 0 error + vitest 530/530 + golden 46/46 + e2e
+  21 passed 1 fixme (V-INV-2 mobile, Item 5) 0 failed. Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).
