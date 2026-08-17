@@ -19,13 +19,19 @@ import postgres from "postgres";
 import {
   chargeCodes,
   chargeLines,
+  customerInvoices,
   customers,
+  invoiceLines,
   jobs,
   ports,
   shipLines,
   users,
   vendors,
 } from "../src/db/schema/index";
+import { formatInvoiceNumber, invoiceTypeForScope } from "../src/lib/job-number/index";
+import { rupiah } from "../src/lib/money/index";
+import { CURRENT_TAX_RULE_VERSION } from "../src/lib/tax/index";
+import { terbilang } from "../src/lib/terbilang/index";
 
 const url = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!url) throw new Error("DIRECT_URL atau DATABASE_URL belum diisi.");
@@ -310,6 +316,119 @@ async function main() {
       { jobId: job.id, chargeCode: "LSS", pencadanganIdr: 5_100_000n, urutan: 4 },
       { jobId: job.id, chargeCode: "THD", pencadanganIdr: 2_600_000n, urutan: 5 },
     ]);
+  }
+
+  /*
+   * O3 (Irisan 10 Item 9, izin user 18 Agu 2026): job FINAL + invoice TERBIT
+   * supaya e2e PDF selalu punya subjek — TANPA bergantung pada data sisa
+   * integration test. Angka = invoice asli Materee (buku acuan), dibekukan
+   * langsung di seed (I-INV-1). Idempoten: lewati kalau jobNo/invoiceNo ada.
+   * Tidak menyentuh golden (baca CSV) maupun ekspektasi integration Irisan 6
+   * (job ad-hoc sendiri; tidak ada assert jumlah invoice global).
+   */
+  const adaJobFinal = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(eq(jobs.jobNo, "ISLI-26.08-006"))
+    .limit(1);
+  if (adaJobFinal.length === 0) {
+    const [maker] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, "indra@isli.co.id"))
+      .limit(1);
+    const [customer] = await db
+      .select()
+      .from(customers)
+      .where(eq(customers.nama, "MATEREE NUSANTARA UTAMA"))
+      .limit(1);
+    if (!maker || !customer)
+      throw new Error("Seed gagal: data dasar kosong (job final).");
+
+    const [jobFinal] = await db
+      .insert(jobs)
+      .values({
+        seqScope: "DOM",
+        tahun: 2026,
+        bulan: 8,
+        running: 6,
+        jobNo: "ISLI-26.08-006",
+        customerId: customer.id,
+        legTrucking: true,
+        legFreight: true,
+        legDelivery: true,
+        serviceType: "FCL",
+        rute: "JKT-BTM",
+        vessel: "KM. ICON IBRANI V.81",
+        etd: "2026-08-14",
+        sales: "KIM",
+        sellingIdr: 23_600_000n,
+        ppnIdr: 248_600n,
+        status: "FINAL",
+        makerId: maker.id,
+      })
+      .returning();
+    if (!jobFinal) throw new Error("Seed gagal: job final tidak terbuat.");
+
+    // Angka beku Materee (dokumen asli; lihat .clinerules/03-money-and-tax.md):
+    // sub 23.600.000 · reimburse 1.000.000 · DPP 22.600.000 · PPN 248.600 ·
+    // PPh23 0 · grand 23.848.600.
+    const invType = invoiceTypeForScope("DOM");
+    const invoiceNo = formatInvoiceNumber({
+      running: 1,
+      invoiceType: invType,
+      jobNo: jobFinal.jobNo,
+      issueMonth: 8,
+      issueYear: 2026,
+    });
+    const [invoice] = await db
+      .insert(customerInvoices)
+      .values({
+        jobId: jobFinal.id,
+        invType,
+        invoiceNo,
+        running: 1,
+        issueYear: 2026,
+        issueMonth: 8,
+        issueDate: "2026-08-15",
+        dueDate: "2026-09-14",
+        topDays: 30,
+        status: "TERBIT",
+        subTotalIdr: 23_600_000n,
+        reimburseIdr: 1_000_000n,
+        dppIdr: 22_600_000n,
+        ppnRateBp: 110,
+        ppnIdr: 248_600n,
+        pph23Applied: false,
+        pph23Idr: 0n,
+        grandTotalIdr: 23_848_600n,
+        terbilang: terbilang(rupiah(23_848_600n)),
+        taxRuleVersion: CURRENT_TAX_RULE_VERSION,
+        podDiterimaAt: new Date("2026-08-10"),
+        customerId: customer.id,
+        createdBy: maker.id,
+      })
+      .returning();
+    if (invoice) {
+      await db.insert(invoiceLines).values([
+        {
+          invoiceId: invoice.id,
+          urutan: 1,
+          chargeCode: "OF",
+          keterangan: "FREIGHT",
+          isReimburse: false,
+          amountIdr: 22_600_000n,
+        },
+        {
+          invoiceId: invoice.id,
+          urutan: 2,
+          chargeCode: "LOLO",
+          keterangan: "REIMBURSE INAP",
+          isReimburse: true,
+          amountIdr: 1_000_000n,
+        },
+      ]);
+    }
   }
 
   const total = await db.select({ jumlah: chargeCodes.kode }).from(chargeCodes);

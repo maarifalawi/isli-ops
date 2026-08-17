@@ -235,6 +235,14 @@ function BarisInvoice({
       <td className="px-3 py-2 text-body">{inv.status}</td>
       <td className="px-3 py-2 text-right">
         <div className="flex flex-wrap justify-end gap-1">
+          {inv.status !== "DRAFT" && inv.status !== "BATAL" && inv.invoiceNo !== null ? (
+            <a
+              href={`/invoice/${inv.id}/pdf?download=1`}
+              className="flex min-h-touch items-center rounded-full border border-hairline px-3 text-label"
+            >
+              Cetak PDF
+            </a>
+          ) : null}
           {inv.status === "DRAFT" && bolehTerbitkan(user.role) && formAktif === null ? (
             <button
               type="button"

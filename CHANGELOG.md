@@ -147,7 +147,30 @@
 - Test: +2 unit gating realokasi (=537 total) + e2e realokasi.spec (STAFF:
   form+tabel tampil, tanpa tombol Setujui) x2 viewport.
 - Verifikasi: typecheck + lint 0 + vitest 537/537 + golden 46/46 + e2e
-  server-fresh 25 passed 1 fixme (V-INV-2 mobile) 0 failed. Tidak ada jawaban baru yang ditebak.
+  server-fresh 25 passed 1 fixme (V-INV-2 mobile) 0 failed.
+
+### Irisan 10 - Batch C / Item 9: PDF Invoice Customer On-Demand (ADR-0005) - 18 Agu 2026
+
+- @react-pdf/renderer terpasang (ADR-0005 Accepted, bukan puppeteer)
+- src/lib/invoice-pdf/index.tsx: render murni, angka HANYA dari kolom beku
+  (I-INV-1), terbilang pass-through, kop placeholder TODO(R12)
+- GET /invoice/[id]/pdf: on-demand, inline/attachment (?download=1), TERBIT+
+  only (DRAFT/BATAL 409)
+- Tombol "Cetak PDF" di /invoice (baris TERBIT+ saja)
+- Koreksi TOOLCHAIN.md: puppeteer -> @react-pdf/renderer (ADR-0005 mengikat)
+- Seed fixture O3: job FINAL ISLI-26.08-006 + invoice TERBIT Materee beku
+  (22.600.000/248.600/23.848.600 + terbilang) - e2e PDF deterministik, tidak
+  lagi bergantung data sisa integration test; idempoten; integration Irisan 6
+  dan golden tak terdampak (job ad-hoc sendiri)
+- 5 unit test: Materee 23.848.600, Diametral 131.429.434, terbilang
+  pass-through, deterministik (normalisasi /CreationDate + /ID @react-pdf),
+  data beda = byte beda
+- vitest.config: esbuild.jsx automatic (konsisten Next 15; tanpa ini .tsx di
+  src/lib gagal "React is not defined" di vitest)
+- Verifikasi: typecheck + lint 0 + vitest 542/542 + golden 46/46 + e2e
+  server-fresh: invoice-pdf HIJAU x2 viewport; 24 passed + 1 fixme
+  (V-INV-2 mobile) + 1 flake login-mobile lokal (pola identik berulang
+  sejak Item 5, spec sama lulus di run lain; CI retries=2 otoritas) Tidak ada jawaban baru yang ditebak.
 - `docs/DOMAIN-RULES.md` R17.5: koreksi referensi salah ketik
   "lihat Q73" menjadi "lihat Q77" (Q73 = keputusan tabel addenda; yang
   masih menunggu jawaban Indra adalah Q77).
