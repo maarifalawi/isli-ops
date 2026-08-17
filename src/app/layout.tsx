@@ -30,8 +30,20 @@ export default function RootLayout({
               >
                 Master Data
               </a>
+              <a
+                href="/jobs"
+                className="flex min-h-[44px] items-center text-label text-ink-48 hover:text-ink"
+              >
+                Job
+              </a>
+              <a
+                href="/laporan"
+                className="flex min-h-[44px] items-center text-label text-ink-48 hover:text-ink"
+              >
+                Laporan
+              </a>
             </nav>
-            <span className="text-label text-ink-48">Irisan 3 · CRUD master</span>
+            <span className="text-label text-ink-48">Irisan 8 · Laporan</span>
           </div>
         </header>
         <main className="mx-auto max-w-[1280px] px-4 py-6">{children}</main>

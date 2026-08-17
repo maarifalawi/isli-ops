@@ -169,28 +169,28 @@ Q05 SUDAH DIJAWAB (ceiling) -- Diametral seharusnya HIJAU sekarang, selisih Rp 1
 > di seluruh rencana. Kalau terasa terlalu panjang, pecah di garis putus-putus.
 
 **8a — fondasi periode**
-- [ ] Komponen pemilih rentang bulan A → bulan B, tersimpan di URL (R14.1)
-- [ ] Satu fungsi agregasi dipakai bersama seluruh halaman laporan
-- [ ] **Test: rentang Apr–Jul == `GOLDEN_APR_JUL_2026`; rentang Jun–Jun == angka Juni saja**
+- [x] Komponen pemilih rentang bulan A → bulan B, tersimpan di URL (R14.1)
+- [x] Satu fungsi agregasi dipakai bersama seluruh halaman laporan
+- [x] **Test: rentang Apr–Jul == GOLDEN laporan 252.482.307 (Q-IRIS8-1b); rentang Jun–Jun == angka Juni saja**
 
 **8b — rekap dasar**
-- [ ] Dashboard GP: bulan × segmen
-- [ ] Rekap pembayaran vendor per bulan (R7.3)
-- [ ] Rekap PPh 23 & PPN (dihitung, bukan tabel tersimpan)
-- [ ] Pencarian job → tampilan lengkap satu halaman
+- [x] Dashboard GP: bulan × segmen
+- [x] Rekap pembayaran vendor per bulan (R7.3)
+- [x] Rekap PPh 23 & PPN (dihitung, bukan tabel tersimpan)
+- [x] Pencarian job → tampilan lengkap satu halaman
 
 **8c — peringkat multi-sumbu** *(baru)*
-- [ ] Tab pendapatan: customer, segmen, sales, rute (R14.2)
-- [ ] Tab belanja: vendor, diberi label terpisah
-- [ ] Tiap baris: jumlah job, selling, cost, GP, GP%, tanggal pertama & terakhir (R14.3)
-- [ ] **Test: mengubah rentang mengubah urutan peringkat**
+- [x] Tab pendapatan: customer, segmen, sales, rute (R14.2)
+- [x] Tab belanja: vendor, diberi label terpisah (peringkatVendorBelanja, R14.2)
+- [x] Tiap baris: jumlah job, selling, cost, GP, GP%, tanggal pertama & terakhir (R14.3)
+- [x] **Test: mengubah rentang mengubah urutan peringkat** (tests/unit/laporan-peringkat.test.ts)
 
 **8d — drill-down berlapis** *(baru)*
-- [ ] peringkat → daftar job → costing → invoice & pembayaran (R14.4)
-- [ ] **Test: total di setiap lapisan sama dengan lapisan di atasnya**
+- [x] peringkat → daftar job → costing → invoice & pembayaran (R14.4; lapis peringkat→job di UI /laporan, job→costing→invoice via /jobs/[id])
+- [x] **Test: total di setiap lapisan sama dengan lapisan di atasnya** (invarian semua sumbu)
 
 **8e — export**
-- [ ] Export Excel mengikuti rentang dan sumbu yang sedang aktif
+- [x] Export Excel mengikuti rentang dan sumbu yang sedang aktif (exceljs, /laporan/export)
 
 ⚠️ **8c dan 8d butuh data per job.** Tidak bisa diisi sebelum `SO BULAN *.xlsx`
 diterima (Q41). Rancangan dan test boleh dikerjakan lebih dulu memakai fixtures.

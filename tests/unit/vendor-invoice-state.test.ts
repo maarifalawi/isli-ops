@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { can, assertCan, AuthorizationError } from "../../src/lib/authz/index";
+import { AuthorizationError, assertCan, can } from "../../src/lib/authz/index";
 import { jarakLevenshtein } from "../../src/lib/similarity/index";
 import {
   AKSI_VENDOR_INVOICE,
@@ -78,7 +78,9 @@ describe("vendor-invoice state machine (D1)", () => {
   });
 
   it("statusTujuanVendorInvoice melempar Error informatif untuk transisi invalid", () => {
-    expect(() => statusTujuanVendorInvoice("DIBAYAR", "pay")).toThrow(/Transisi tidak sah/);
+    expect(() => statusTujuanVendorInvoice("DIBAYAR", "pay")).toThrow(
+      /Transisi tidak sah/,
+    );
   });
 
   it("mengunciActual: hanya DIVERIFIKASI/DIBAYAR (guard D7); DIBATALKAN/DITERIMA tidak", () => {
