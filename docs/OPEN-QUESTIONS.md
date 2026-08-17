@@ -416,3 +416,28 @@ Temuan stale yang ikut dibersihkan saat Irisan 5:
 - ERD.md tabel approval memakai level TEXT ('L1','FINAL') + kolom action;
   skema aktual memakai tingkat INTEGER (1|2) tanpa action - skema menang,
   ERD diselaraskan.
+
+---
+
+# Irisan 7 - Invoice Vendor: Q-IRIS7 (D1-D9) — DIJAWAB & DIIMPLEMENTASIKAN 17 Agu 2026
+
+Keputusan user (jawaban atas Tahap 1-3 Irisan 7), ditegakkan di migrasi
+0007_iris7_vendor_invoice + `src/lib/vendor-invoice/` + guard di
+`src/lib/charge-line/`:
+
+| # | Pertanyaan | Jawaban |
+|---|---|---|
+| Q-IRIS7-1 (D1) | State machine vendor invoice: dokumen 7-state vs skema 4-state? | **SKEMA MENANG** (preseden Q-IRIS5-2 & konflik #1/#2 Irisan 6). DITERIMA→DIVERIFIKASI→DIBAYAR + DIBATALKAN (terminal, dari state mana pun via cancel beralasan). Dispute/reject/awaiting-vendor DILIPAT ke DIBATALKAN+alasan — TIDAK ada state baru. |
+| Q-IRIS7-2 (D2) | Mapping peran "AP Staff"/"Finance Manager"? | AP Staff=STAFF (hanya receive); Finance Manager=MANAGER (verify/pay). Batal/unlock_paid=OWNER SAJA (R-A5). |
+| Q-IRIS7-3 (D3) | Izin verify? | BARU: `vendor_invoice:verify` (O/M, STAFF ✗). Verifier ≠ penerima WAJIB (R-A1 via assertNotSelfApproval atas `diterima_oleh`). |
+| Q-IRIS7-4 (D4) | Verifikasi pada job FINAL? | **DIIZINKAN dengan pengecualian eksplisit** — vendor invoice lazim datang SETELAH job final. Verifikasi HANYA menulis `actual_idr` (via service, bukan updateChargeLine); J-INV-1 tetap menjaga field lain. Job DIBATALKAN ditolak; DRAFT/DIAJUKAN/DISETUJUI_1 diizinkan. |
+| Q-IRIS7-5 (D5) | Multi/partial verification? | 1:1 — SATU charge line = SATU invoice vendor. `UNIQUE(charge_line_id)` di vendor_invoice_lines (DB-level). **Keterbatasan disengaja:** partial/multiple = irisan terpisah kalau dibutuhkan. |
+| Q-IRIS7-6 (D6) | Baris USD? | Verifikasi HANYA mengisi `actual_idr` — `actual_usd` TIDAK disentuh (konsisten R8.2: IDR sumber kebenaran tunggal GP & pajak). **Keterbatasan disengaja.** |
+| Q-IRIS7-7 (D7) | Jalur lama updateChargeLine menulis actual? | Setelah terverifikasi invoice aktif → updateChargeLine MEMPERTAHANKAN actual (beku; perubahan eksplisit ditolak) & hapus ditolak. Belum terverifikasi → input manual actual masih boleh (backward compat). |
+| Q-IRIS7-8 (D8) | Scope addenda R17 & rekap R7.3? | TUNDA — tidak disentuh Irisan 7 (tabel vendor_invoice_addenda tetap idle; rekap = Slice 8). |
+| Q-IRIS7-9 (D9) | Vendor invoice memblokir unlock job? | TIDAK. V-INV-4 mengunci charge line, bukan syarat unlock; transisi.ts tidak diubah (J-INV-3/4 tetap hanya invoice customer). |
+
+Yang TETAP MENUNGGU (tidak berubah oleh Irisan 7): Q14 (mekanisme PPh 23
+potong vendor — R3.7 ⚠️ DUGAAN; `pph23_idr` input manual eksplisit, TIDAK
+pernah dihitung otomatis), Q64 (kode biaya tanpa vendor), Q77 (approval
+addendum vendor R17.5), Q21 (upload lampiran invoice vendor).

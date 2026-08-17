@@ -238,24 +238,58 @@ CREATE TABLE customer_invoice_addendum (
 > ⚠️ R16.3 (pajak atas selisih) dan R16.5 (tingkat approval) masih **asumsi**,
 > menunggu Q69. Kolomnya sudah siap dipakai; nilainya baru pasti setelah dijawab.
 
-### `vendor_invoice`
+### `vendor_invoice` — ✅ diselaraskan ke skema aktual (Irisan 7, 17 Agu 2026)
 ```sql
-CREATE TABLE vendor_invoice (
-  id                UUID PRIMARY KEY,
-  vendor_id         UUID NOT NULL REFERENCES vendor(id),
-  vendor_invoice_no TEXT NOT NULL,
-  invoice_date      DATE NOT NULL,
-  amount_idr        BIGINT NOT NULL,
-  pph23_idr         BIGINT NOT NULL DEFAULT 0,
-  is_reimbursement  BOOLEAN NOT NULL DEFAULT false,
-  status            TEXT NOT NULL DEFAULT 'RECEIVED',
-  due_date          DATE,
-  received_by       UUID NOT NULL REFERENCES app_user(id),
+-- Skema aktual (migrasi 0000 + 0007_iris7_vendor_invoice). Kolom lama rancangan
+-- (is_reimbursement, due_date, received_by) TIDAK ada di skema — catat deviasi,
+-- jangan dibuat diam-diam.
+CREATE TABLE vendor_invoices (
+  id                 UUID PRIMARY KEY,
+  vendor_id          UUID NOT NULL REFERENCES vendors(id),
+  vendor_invoice_no  TEXT NOT NULL,          -- persis dari kertas vendor (01A/01B)
+  tanggal_invoice    DATE NOT NULL,
+  jumlah_idr         BIGINT NOT NULL,        -- ADR-0002: BIGINT rupiah
+  pph23_idr          BIGINT NOT NULL DEFAULT 0, -- R3.7 ⚠️ DUGAAN — input manual, Q14
+  status             vendor_invoice_status NOT NULL DEFAULT 'DITERIMA',
+                     -- DITERIMA | DIVERIFIKASI | DIBAYAR | DIBATALKAN (D1:
+                     -- skema 4-state menang; dispute/reject dilipat + alasan)
+  diterima_oleh      UUID REFERENCES users(id),  -- Irisan 7: dasar R-A1 verify
+  diverifikasi_oleh  UUID REFERENCES users(id),  -- Irisan 7: jejak verify
+  diverifikasi_at    TIMESTAMPTZ,                -- Irisan 7
+  dibayar_at         TIMESTAMPTZ,                -- terisi = TERKUNCI (R-A5)
+  dibayar_oleh       UUID REFERENCES users(id),
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
 
-  -- ⭐ INI yang mencegah kasus 01A / 01B
-  CONSTRAINT uq_vendor_inv UNIQUE (vendor_id, vendor_invoice_no)
+  -- ⭐ INI yang mencegah kasus 01A / 01B (R7.1)
+  CONSTRAINT uq_vendor_invoice UNIQUE (vendor_id, vendor_invoice_no)
 );
 ```
+
+### `vendor_invoice_lines` — junction verifikasi (Irisan 7, D5)
+```sql
+CREATE TABLE vendor_invoice_lines (
+  id                UUID PRIMARY KEY,
+  vendor_invoice_id UUID NOT NULL REFERENCES vendor_invoices(id) ON DELETE CASCADE,
+  charge_line_id    UUID NOT NULL REFERENCES charge_lines(id),
+  jumlah_idr        BIGINT NOT NULL,
+
+  -- ⭐ D5: satu charge line = SATU verifikasi invoice vendor (anti
+  --   double-verification di level DB). Partial/multiple = irisan terpisah.
+  CONSTRAINT uq_vendor_inv_line_charge_line UNIQUE (charge_line_id)
+);
+```
+> Verifikasi (V-INV-5) INSERT baris junction ini DAN mengisi
+> `charge_lines.actual_idr` (satu-satunya pintu setelah D7).
+> `batal` sebelum bayar MENGHAPUS junction + reset `actual_idr` NULL
+> (baris bebas diverifikasi ulang — alur revisi Bu Niken); `batal`/`DIBAYAR`
+> tidak pernah menyentuhnya (V-INV-4).
+>
+> **Deviasi vs rancangan lama (jangan dibuat diam-diam):** `PAYMENT_OUT`
+> hanya ada di diagram konseptual — tidak pernah dibuat; pembayaran vendor =
+> kolom `dibayar_at/dibayar_oleh` (manual, tanpa partial). `charge_lines`
+> aktual TIDAK punya `vendor_invoice_id` maupun `line_status` kolom — status
+> PENCADANGAN/ACTUAL/LOCKED (STATE-MACHINE §4) adalah TURUNAN query
+> (`statusChargeLine`), bukan kolom tersimpan.
 
 ### `vendor_invoice_addendum` ✅ baru, R17 -- simetris dengan customer_invoice_addendum
 ```sql

@@ -144,13 +144,22 @@ Q05 SUDAH DIJAWAB (ceiling) -- Diametral seharusnya HIJAU sekarang, selisih Rp 1
 
 ## Slice 7 — Invoice vendor & anti dobel bayar
 
-- [ ] Skema `vendor_invoice` + `UNIQUE(vendor_id, vendor_invoice_no)`
-- [ ] Peringatan nomor mirip (kasus 01A/01B)
-- [ ] Verifikasi → isi `actual` di charge line
-- [ ] Status bayar tampil sebelum aksi bayar (R7.2)
-- [ ] Tolak pembayaran kedua (V-INV-3)
-- [ ] Kunci charge line setelah PAID (V-INV-4)
-- [ ] **Test khusus: skenario 01A/01B harus gagal saat dobel input**
+> ✅ **SERVICE SELESAI 17 Agu 2026** (branch `iris7-invoice-vendor`) — tabel
+> sudah ada sejak migrasi 0000; Irisan 7 menambah migrasi 0007 (kolom jejak
+> `diterima_oleh/diverifikasi_oleh/diverifikasi_at` + `UNIQUE(charge_line_id)`
+> junction, D5), modul `src/lib/vendor-invoice/` (receive/verify/pay/batal/
+> unlock_paid sesuai keputusan D1–D9), guard D7/V-INV-4 di charge-line, izin
+> `vendor_invoice:verify`, audit RECEIVE/VERIFY/PAY/BATAL_VENDOR, 30 test
+> integrasi + unit. Rincian: `docs/HANDOFF-IRISAN-7.md`. **UI ditunda** (tidak
+> ada halaman vendor invoice — service-only).
+
+- [x] Skema `vendor_invoice` + `UNIQUE(vendor_id, vendor_invoice_no)`
+- [x] Peringatan nomor mirip (kasus 01A/01B) — Levenshtein ≤ 2, warning bukan blokir (V-INV-2)
+- [x] Verifikasi → isi `actual` di charge line (V-INV-5; job FINAL diizinkan — D4)
+- [x] Status bayar tampil sebelum aksi bayar (R7.2/V-INV-3 — `lihatStatusPembayaran`)
+- [x] Tolak pembayaran kedua (V-INV-3/R7.2)
+- [x] Kunci charge line setelah PAID (V-INV-4 — guard di updateChargeLine/hapus)
+- [x] **Test khusus: skenario 01A/01B harus gagal saat dobel input** (DB-level, 30/30 hijau)
 
 ---
 

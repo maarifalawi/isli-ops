@@ -988,6 +988,16 @@ export const vendorInvoices = pgTable(
     pph23Idr: bigint("pph23_idr", { mode: "bigint" }).notNull().default(sql`0`),
 
     status: vendorInvoiceStatusEnum("status").notNull().default("DITERIMA"),
+    /**
+     * Irisan 7 (D2/D3): siapa yang menerima (input) invoice ini. Dasar R-A1 —
+     * verifier WAJIB orang lain (assertNotSelfApproval di service verify).
+     * Nullable mengikuti pola ADD COLUMN aman untuk baris lama; service SELALU
+     * mengisi, dan verify menolak baris yang kolom ini NULL (data tidak lengkap).
+     */
+    diterimaOleh: uuid("diterima_oleh").references(() => users.id),
+    /** Diverifikasi oleh siapa & kapan (jejak transisi verify, V-INV-5). */
+    diverifikasiOleh: uuid("diverifikasi_oleh").references(() => users.id),
+    diverifikasiAt: timestamp("diverifikasi_at", { withTimezone: true }),
     /** Setelah terisi, baris ini TERKUNCI. Hanya OWNER yang bisa membuka. */
     dibayarAt: timestamp("dibayar_at", { withTimezone: true }),
     dibayarOleh: uuid("dibayar_oleh").references(() => users.id),
@@ -1009,17 +1019,38 @@ export const vendorInvoices = pgTable(
   }),
 );
 
-/** Menghubungkan invoice vendor ke baris biaya yang dibayarnya. */
-export const vendorInvoiceLines = pgTable("vendor_invoice_lines", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  vendorInvoiceId: uuid("vendor_invoice_id")
-    .notNull()
-    .references(() => vendorInvoices.id, { onDelete: "cascade" }),
-  chargeLineId: uuid("charge_line_id")
-    .notNull()
-    .references(() => chargeLines.id),
-  jumlahIdr: bigint("jumlah_idr", { mode: "bigint" }).notNull(),
-});
+/**
+ * Menghubungkan invoice vendor ke baris biaya yang dibayarnya.
+ *
+ * Irisan 7 (D5 — keputusan user 17 Agu 2026): relasi 1:1 — SATU charge line
+ * hanya boleh diverifikasi oleh SATU vendor invoice. UNIQUE di bawah menolak
+ * double-verification di level DATABASE (paling aman); partial/multiple =
+ * irisan terpisah kalau kelak dibutuhkan.
+ *
+ * Konvensi siklus junction: batal SEBELUM bayar menghapus baris junction ini
+ * (actual_idr di-reset NULL — baris bebas diverifikasi ulang oleh invoice
+ * revisi vendor, alur Bu Niken); batal SETELAH bayar MEMBIARKAN junction &
+ * actual (uang riil sudah keluar — jejak tidak difalsifikasi, baris terkunci
+ * permanen sesuai V-INV-4).
+ */
+export const vendorInvoiceLines = pgTable(
+  "vendor_invoice_lines",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    vendorInvoiceId: uuid("vendor_invoice_id")
+      .notNull()
+      .references(() => vendorInvoices.id, { onDelete: "cascade" }),
+    chargeLineId: uuid("charge_line_id")
+      .notNull()
+      .references(() => chargeLines.id),
+    jumlahIdr: bigint("jumlah_idr", { mode: "bigint" }).notNull(),
+  },
+  (table) => ({
+    /* D5: satu charge line = satu verifikasi vendor invoice. Tidak ada dua. */
+    uqChargeLine: uniqueIndex("uq_vendor_inv_line_charge_line").on(table.chargeLineId),
+    idxVendorInvoice: index("idx_vinv_line_invoice").on(table.vendorInvoiceId),
+  }),
+);
 
 // ---------------------------------------------------------------------------
 // Invoice vendor susulan / dipecah antar bulan (R17) -- simetris dengan R16

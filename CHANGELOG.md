@@ -63,3 +63,40 @@
   berita acara, DIBATALKAN terminal). Semua keputusan Q-IRIS5-1..8 terkunci test.
 - Docs: STATE-MACHINE.md (mapping nama + J-INV-7/8 + hapus stale reallocate),
   RBAC.md, ERD.md, OPEN-QUESTIONS.md.
+
+## Irisan 7 - Invoice Vendor (AP): verifikasi, bayar, anti dobel 01A/01B (2026-08-17)
+
+- Migrasi `0007_iris7_vendor_invoice`: kolom jejak `vendor_invoices.diterima_oleh`
+  / `diverifikasi_oleh` / `diverifikasi_at` (dasar R-A1 + audit trail) dan
+  `UNIQUE(charge_line_id)` pada `vendor_invoice_lines` (D5: satu charge line =
+  satu invoice vendor - anti double-verification di level DB) + index junction.
+- Modul baru `src/lib/vendor-invoice/`: state machine murni 4-state (D1: skema
+  menang - DITERIMA/DIVERIFIKASI/DIBAYAR/DIBATALKAN; dispute/reject dilipat ke
+  DIBATALKAN+alasan) + service receive/verify/pay/batal/unlock_paid dengan
+  row-lock + guard status-lama (anti-race), ON CONFLICT DO NOTHING untuk nomor
+  identik (R7.1 kasus 01A/01B), peringatan nomor mirip Levenshtein <= 2
+  (V-INV-2: warning bukan blokir), verify mengisi `charge_lines.actual_idr`
+  via junction (V-INV-5; job FINAL diizinkan - D4; hanya actual_idr - D6;
+  R-A1 verifier != penerima - D3), `lihatStatusPembayaran` wajib sebelum bayar
+  (V-INV-3), tolak bayar kedua (R7.2), batal OWNER-only beralasan (R-A5/D1)
+  reset actual sebelum bayar, unlock_paid DIBAYAR->DIVERIFIKASI tanpa reset
+  actual (V-INV-4).
+- Authz +1 izin: `vendor_invoice:verify` (O/M; STAFF tidak). Audit +4 aksi:
+  RECEIVE/VERIFY/PAY/BATAL_VENDOR (alasan wajib BATAL_VENDOR) + entitas
+  VENDOR_INVOICE.
+- Guard 4b (D7/V-INV-4): `updateChargeLine` MEMPERTAHANKAN actual_idr/actual_usd
+  baris terverifikasi (beku - tidak bisa ditimpa/null-kan diam-diam; perubahan
+  eksplisit ditolak) dan `hapusChargeLine` menolak baris terverifikasi.
+  GP 4d TIDAK disentuh (kontrak Q-4d-2: GP tetap basis pencadangan; test
+  integrasi membuktikan actual tidak mengubah hitungGP).
+- TIDAK ada UI (service-only); transisi.ts TIDAK diubah (D9: vendor invoice
+  tidak memblokir unlock job); addenda R17 + rekap R7.3 DITUNDA (D8).
+- Test: unit state machine vendor invoice + izin + similarity nomor 01A/01B;
+  30 integrasi DB (dobel nomor identik gagal di DB, peringatan mirip, R-A1,
+  D4 FINAL vs DIBATALKAN, D5 UNIQUE, V-INV-3/4, pay kedua ditolak, batal reset,
+  unlock_paid, audit 1 baris per aksi).
+- Docs: STATE-MACHINE.md (SS3 rewrite mapping D1/D2 + V-INV-6/7/8), RBAC.md
+  (matriks vendor_invoice + catatan Irisan 7), ERD.md (vendor_invoice +
+  vendor_invoice_lines diselaraskan ke skema aktual; deviasi PAYMENT_OUT/
+  line_status dicatat), OPEN-QUESTIONS.md (Q-IRIS7 D1-D9 terjawab), BUILD-PLAN
+  (Slice 7 selesai), HANDOFF-IRISAN-7.md baru.

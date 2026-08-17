@@ -4,6 +4,7 @@ import { writeAudit } from "@/lib/audit/index";
 import { AuthorizationError, assertCan } from "@/lib/authz/index";
 import { konversiUsdKeIdr } from "@/lib/money/index";
 import { isEditable } from "@/lib/state-machine/index";
+import { chargeLineTerverifikasi } from "@/lib/vendor-invoice/index";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import {
   type ChargeLineFields,
@@ -419,9 +420,39 @@ export async function updateChargeLine(
     const guard = await cekGuardIrisan5(tx, user, sebelum.jobId);
     if (guard) return gagal(guard);
 
+    /*
+     * Irisan 7 (D7/V-INV-4): setelah baris TERVERIFIKASI invoice vendor aktif
+     * (DIVERIFIKASI/DIBAYAR), verifikasi adalah SATU-SATUNYA pintu untuk
+     * actual_idr/actual_usd — updateChargeLine menolak PERUBAHAN actual yang
+     * diminta eksplisit, dan MEMPERTAHANKAN nilai existing (tidak pernah
+     * menimpanya, termasuk tidak me-null-kan diam-diam untuk baris IDR yang
+     * kolom actual-nya tidak ada di input). Koreksi lewat: batal invoice
+     * vendor (sebelum bayar — service me-reset actual) atau addendum R17.
+     */
+    const terverifikasi = await chargeLineTerverifikasi(tx, lineId);
+    if (terverifikasi) {
+      const actualBaru = usdUtuh(input.actualUsd, "Nilai aktual USD");
+      if (!actualBaru.ok) return gagal(actualBaru.error);
+      if (
+        input.actualUsd !== undefined &&
+        (actualBaru.value ?? null) !== (sebelum.actualUsd ?? null)
+      ) {
+        return gagal(
+          "Baris ini sudah diverifikasi invoice vendor — nilai aktual hanya boleh diubah lewat verifikasi invoice vendor (Irisan 7, D7/V-INV-4). Batalkan invoice vendor-nya dulu bila salah.",
+        );
+      }
+    }
+
     const val = await validasiDenganMaster(tx, { ...input, jobId: sebelum.jobId });
     if (!val.ok) return gagal(val.error);
     const n = val.nilai;
+
+    // Baris terverifikasi: actual_idr/actual_usd DIBEKUKAN pada nilai existing
+    // — edit field lain boleh, tapi actual tidak tersentuh sama sekali.
+    if (terverifikasi) {
+      n.actualIdr = sebelum.actualIdr;
+      n.actualUsd = sebelum.actualUsd;
+    }
 
     const [sesudah] = await tx
       .update(chargeLines)
@@ -484,6 +515,17 @@ export async function hapusChargeLine(
 
     const guard = await cekGuardIrisan5(tx, user, sebelum.jobId);
     if (guard) return gagal(guard);
+
+    /*
+     * Irisan 7 (D7): baris yang sudah diverifikasi invoice vendor aktif tidak
+     * boleh dihapus — actual-nya sedang dijaga verifikasi; soft delete
+     * memutus konteks antara invoice vendor dan job.
+     */
+    if (await chargeLineTerverifikasi(tx, lineId)) {
+      return gagal(
+        "Baris biaya ini sudah diverifikasi invoice vendor — tidak boleh dihapus. Batalkan invoice vendor-nya dulu (Irisan 7, D7).",
+      );
+    }
 
     /*
      * Guard Irisan 4e (keputusan poin 6): baris yang punya proposal realokasi
